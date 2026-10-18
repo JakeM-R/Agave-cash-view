@@ -114,6 +114,7 @@ table{width:100%;border-collapse:collapse}
 th{font-family:var(--mono);font-weight:500;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
 td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle;color:var(--ink)}
 td.r,th.r{text-align:right}
+td.num{white-space:nowrap}
 td .s{display:block;color:var(--muted);font-size:12px}
 tr.draft td{background:#FAFBFA;padding:0}
 .tier{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;white-space:nowrap}
@@ -169,7 +170,7 @@ tr.tot td{font-weight:600;border-top:2px solid var(--ink);border-bottom:0}
 tr.sep td{padding-top:16px;border-bottom:1px solid var(--line)}
 tr.claw td{color:var(--red-ink)}
 td.neg{color:var(--red-ink)}
-#posTable td,#remitTable td{white-space:nowrap}
+#remitTable td{white-space:nowrap}
 dialog#pv{border:1px solid var(--line-strong);padding:0;max-width:760px;width:calc(100% - 32px);max-height:calc(100% - 32px);border-radius:0;color:var(--body)}
 dialog#pv::backdrop{background:rgba(17,26,44,.6)}
 .pv-inner{padding:28px}
@@ -178,9 +179,10 @@ dialog#pv::backdrop{background:rgba(17,26,44,.6)}
 .pv-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:14px 0;border-bottom:1px solid var(--line);color:var(--ink)}
 .pv-meta .eyebrow{display:block;margin-bottom:2px}
 .pv-h{font-size:14px;font-weight:600;margin:22px 0 4px}
-.pv-net{margin:14px 0 0;padding:10px 12px;background:var(--mint);color:var(--ink)}
 .pv-actions{display:flex;gap:8px;padding:14px 28px;border-top:1px solid var(--line);background:#FBFCFB;position:sticky;bottom:0}
 @media print{body.printing > :not(#pv){display:none!important}body.printing dialog#pv{position:static;max-width:none;width:auto;max-height:none;border:0}body.printing .pv-actions{display:none}}
+.terms{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--body)}
+.terms input{width:52px;border:1px solid var(--line-strong);border-radius:0;padding:5px 6px;text-align:right;background:#fff}
 footer{font-size:12px;color:var(--muted);padding:0 0 32px}
 .dropping::after{content:"Drop the CSV to load it";position:fixed;inset:12px;border:2px dashed var(--green);background:rgba(17,26,44,.82);color:#fff;display:grid;place-items:center;font:600 22px var(--head);z-index:60}
 .hidden{display:none!important}
@@ -308,7 +310,7 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
           <li><span class="check">✓</span>Everything is computed as of the selected date: invoices created later are ignored, and an invoice paid after that date counts as outstanding on it. Week-on-week changes re-run the same numbers as of seven days earlier.</li>
           <li><span class="check">✓</span>Collected means amount paid, dated by the paid-at date. Weeks run Monday to Sunday; the current week runs to the as-of date.</li>
           <li><span class="check">✓</span>Days overdue counts from the due date (or the invoice date for auto-charged invoices with no due date). Invoices 1 to 6 days late are listed as in grace with no follow-up drafted.</li>
-          <li><span class="check">✓</span>Partner remittances count as received only when dated on or before the as-of date, and fall due 15 days after the period ends. Refunds on partner-sourced revenue are netted in the period they happen, so revenue already paid out is clawed back from the next statement.</li>
+          <li><span class="check">✓</span>Partner remittances count as received only when dated on or before the as-of date, and fall due a set number of days after the period ends (an input on the Partners tab). Refunds on partner-sourced revenue are netted in the period they happen, so revenue already paid out is clawed back from the next statement.</li>
           <li><span class="check">✓</span>Column names are matched loosely, so "Amount Due", "amount_due" and "Total" all work. Revenue stream comes from a <code>stream</code> metadata column if present, otherwise it's inferred from the description.</li>
         </ul>
       </div>
@@ -320,19 +322,18 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
   <div class="grid">
     <div class="card">
       <div class="card-h" style="align-items:center;flex-wrap:wrap">
-        <div><div class="eyebrow">Partner position</div><h2 id="posTitle">Partner position</h2><p class="sub">Money in from partners and money out to VARs, side by side for the period.</p></div>
+        <div><div class="eyebrow">Partners</div><h2 id="posTitle">Partners</h2><p class="sub">Money in from partners and rev-share out to VARs for the period, tracked separately. Rates, thresholds, caps, payment terms and attribution are all inputs; nothing here assumes how any partner agreement is structured.</p></div>
         <div class="toolbar" style="margin:0">
           <label class="eyebrow" for="period">Period</label>
           <select id="period" class="plain"></select>
           <span class="src-pill"></span>
         </div>
       </div>
-      <div class="card-b rules-wrap"><table id="posTable" class="stack"></table></div>
       <p class="jd"><b>From the JD</b>"Make sure partner revenue is tracked, paid, and never a black box."</p>
     </div>
 
     <div class="card span-7">
-      <div class="card-h"><div><div class="eyebrow">Money in</div><h2>Partner remittances</h2><p class="sub">Expected is what the partner's report says they owe; received is what landed in the bank. Earlier periods still short are carried here until they're settled.</p></div><span class="src-pill"></span></div>
+      <div class="card-h"><div><div class="eyebrow">Money in</div><h2>Partner remittances</h2><p class="sub">Expected is what's due under the agreement; received is what landed in the bank. Earlier periods still short are carried here until they're settled.</p></div><span class="src-pill"></span></div>
       <div class="card-b rules-wrap"><table id="remitTable" class="stack"></table></div>
       <p class="jd"><b>From the JD</b>"Track revenue received from vendors and partners."</p>
     </div>
@@ -342,6 +343,7 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
         <textarea id="remitText" spellcheck="false" aria-label="Partner remittances CSV"></textarea>
         <div class="toolbar">
           <button class="btn btn-line" id="remitUpload" type="button">Upload CSV</button>
+          <label class="terms">Due <input id="remitTerms" inputmode="numeric" value="15" aria-label="Days after period end that a remittance falls due"> days after period end</label>
           <input type="file" id="remitFile" accept=".csv,.tsv,text/csv" class="hidden">
         </div>
         <div class="grace" id="remitNote"></div>
@@ -531,31 +533,30 @@ function parseInvoices(text) {
 /* ---------- demo data ---------- */
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function demoCSV(T) {
-  const rnd = mulberry32(353);
-  // letter, stream, price per invoice, cadence (m = monthly, q = quarterly), billing offset in days, partner
+  const rnd = mulberry32(47);
+  // letter, stream, monthly invoice amount, billing offset in days, partner
   const CUST = [
-    ["A", "Subscriptions", 799, "m", 3], ["B", "Subscriptions", 3897, "q", 40], ["C", "Subscriptions", 499, "m", 12],
-    ["D", "Subscriptions", 1299, "m", 26], ["E", "Subscriptions", 299, "m", 17], ["F", "Subscriptions", 1497, "q", 70],
-    ["G", "Partner", 2499, "m", 22, "Partner A"], ["H", "Partner", 1999, "m", 5, "Partner A"], ["I", "Partner", 1499, "m", 9, "Partner A"],
-    ["J", "Subscriptions", 799, "m", 21], ["K", "Subscriptions", 299, "m", 14], ["L", "Partner", 1299, "m", 7, "Partner B"],
-    ["M", "Subscriptions", 1299, "m", 25], ["N", "Partner", 999, "m", 19, "Partner B"], ["O", "Partner", 2999, "m", 2, "Partner C"],
-    ["P", "Subscriptions", 799, "m", 28], ["Q", "Subscriptions", 2397, "q", 55], ["R", "Partner", 2499, "m", 11, "Partner C"],
-    ["S", "Subscriptions", 499, "m", 15], ["T", "Subscriptions", 499, "m", 20],
+    ["A", "Subscriptions", 1000, 3], ["B", "Subscriptions", 1000, 1], ["C", "Subscriptions", 1000, 12],
+    ["D", "Subscriptions", 1000, 26], ["E", "Subscriptions", 1000, 17], ["F", "Subscriptions", 1000, 18],
+    ["G", "Partner", 2000, 22, "Partner A"], ["H", "Partner", 2000, 5, "Partner A"], ["I", "Partner", 2000, 9, "Partner A"],
+    ["J", "Subscriptions", 1000, 21], ["K", "Subscriptions", 1000, 14], ["L", "Partner", 2000, 7, "Partner B"],
+    ["M", "Subscriptions", 1000, 25], ["N", "Partner", 2000, 19, "Partner B"], ["O", "Partner", 2000, 2, "Partner C"],
+    ["P", "Subscriptions", 1000, 28], ["Q", "Subscriptions", 1000, 24], ["R", "Partner", 2000, 11, "Partner C"],
+    ["S", "Subscriptions", 1000, 15], ["T", "Subscriptions", 1000, 20],
   ];
   // Seeded states: unpaid (overdue), partial, void
   const UNPAID = new Set(["D0", "D1", "G0", "J2", "P0", "T2", "T3", "E0"]);
   const inv = [];
-  for (const [L, stream, price, cad, off, partner] of CUST) {
-    const step = cad === "m" ? 30 : 91;
-    const lookback = L === "T" ? 115 : 95;
+  for (const [L, stream, price, off, partner] of CUST) {
+    const step = 30, lookback = L === "T" ? 115 : 90;
     for (let k = 0; off + step * k <= lookback; k++) {
       const created = T - off - step * k, due = created + 14, key = L + k;
       const rec = { L, stream, partner: partner || "", amount: price, created, due,
-        desc: stream === "Partner" ? `Platform subscription (monthly), via ${partner}` : `Platform subscription (${cad === "m" ? "monthly" : "quarterly"})`,
+        desc: stream === "Partner" ? `Subscription, monthly invoice (via ${partner})` : "Subscription, monthly invoice",
         status: "paid", paid: price, paidAt: null };
       if (key === "A2") { rec.status = "void"; rec.paid = 0; rec.desc += ", voided and reissued"; }
       else if (UNPAID.has(key)) { rec.status = "open"; rec.paid = 0; }
-      else if (key === "M1") { rec.status = "open"; rec.paid = 600; }
+      else if (key === "M1") { rec.status = "open"; rec.paid = 500; }
       else if (key === "C1" || key === "K1") rec.paidAt = T - (key === "C1" ? 3 : 2);
       else if (due > T) {
         if (rnd() < 0.4) rec.paidAt = Math.min(T, created + 1 + Math.floor(rnd() * Math.max(1, T - created)));
@@ -565,11 +566,11 @@ function demoCSV(T) {
     }
   }
   const ADDONS = [
-    ["K", "Extra seats (5)", 199, 23, 9, "open"], ["S", "Data sync add-on", 450, 69, 55, "open"],
-    ["Q", "Onboarding package", 1500, 98, 84, "open"], ["B", "Implementation fee", 2500, 126, 112, "open"],
-    ["F", "Premium support add-on", 350, 154, 140, "uncollectible"], ["C", "Reporting add-on", 299, 40, 26, "paid"],
+    ["K", 23, 9, "open"], ["S", 69, 55, "open"], ["Q", 98, 84, "open"],
+    ["B", 126, 112, "open"], ["F", 154, 140, "uncollectible"], ["C", 40, 26, "paid"],
   ];
-  for (const [L, desc, amount, cOff, dOff, status] of ADDONS) {
+  for (const [L, cOff, dOff, status] of ADDONS) {
+    const desc = "Add-on", amount = 250;
     const rec = { L, stream: "Add-ons", partner: "", amount, created: T - cOff, due: T - dOff, desc, status, paid: status === "paid" ? amount : 0, paidAt: null };
     if (status === "paid") rec.paidAt = rec.due - 3;
     inv.push(rec);
@@ -587,13 +588,13 @@ function demoCSV(T) {
   return toCSV(rows);
 }
 const DEFAULT_RULES = {
-  "Partner A": { rate: 20, thr: 5000, rate2: 25, cap: 1500 },
-  "Partner B": { rate: 15, thr: 3000, rate2: 20, cap: "" },
+  "Partner A": { rate: 20, thr: 4000, rate2: 25, cap: 1500 },
+  "Partner B": { rate: 15, thr: "", rate2: "", cap: "" },
   "Partner C": { rate: 20, thr: 2000, rate2: 30, cap: 500 },
 };
 
 /* ---------- state ---------- */
-const S = { invoices: [], parse: null, source: { kind: "demo", name: "" }, asOf: todayDay(), rules: structuredClone(DEFAULT_RULES), period: null, attr: [], remit: [], paidOut: {} };
+const S = { invoices: [], parse: null, source: { kind: "demo", name: "" }, asOf: todayDay(), rules: structuredClone(DEFAULT_RULES), period: null, attr: [], remit: [], paidOut: {}, remitTerms: 15 };
 let DEMO_TEXT = "";
 
 /* ---------- metrics ---------- */
@@ -724,13 +725,13 @@ function hbarChart(el, rows, opts) {
 /* ---------- rendering: weekly cash ---------- */
 const $ = id => document.getElementById(id);
 function srcPills() {
-  const html = S.source.kind === "demo" ? `<span class="pill demo">Demo data</span>` : `<span class="pill file" title="${esc(S.source.name)}">Your data</span>`;
+  const html = S.source.kind === "demo" ? `<span class="pill demo">Sample data</span>` : `<span class="pill file" title="${esc(S.source.name)}">Your data</span>`;
   document.querySelectorAll(".src-pill").forEach(e => e.innerHTML = html);
 }
 function renderNotice() {
   const n = $("notice");
   if (S.source.kind === "demo") {
-    n.innerHTML = `<span class="pill demo">Demo data</span><span>${S.invoices.length} fictional invoices across 20 customers (Contractor A to T) and three VARs. Load a Stripe invoice export (Invoices → Export, all columns) to see your own numbers. Nothing leaves your browser.</span><a class="arrow" id="noticeLoad">Load your CSV</a>`;
+    n.innerHTML = `<span class="pill demo">Sample data</span><span>Round numbers to show the mechanics, not a guess at anyone's pricing: ${S.invoices.length} fictional monthly invoices across 20 customers (Contractor A to T), three VARs and two paying partners. Load a Stripe invoice export (Invoices → Export, all columns) to see your own numbers. Nothing leaves your browser.</span><a class="arrow" id="noticeLoad">Load your CSV</a>`;
     $("noticeLoad").onclick = () => $("fileIn").click();
   } else {
     const p = S.parse, live = S.invoices.length - p.counts.excluded;
@@ -839,7 +840,7 @@ function weeklyNote(m, p, asOf, avg) {
   const rec = p.chase.filter(i => i.paidAt != null && i.paidAt > asOf - 7 && i.paidAt <= asOf).sort((a, b) => b.out - a.out);
   L.push(rec.length ? `Recovered: ${rec.length} invoice${rec.length === 1 ? "" : "s"} from last week's chase list paid, ${money(rec.reduce((s, i) => s + i.out, 0))} (${names(rec)}).` : "Recovered: nothing from last week's chase list was paid this week.");
   const ps = partnerSummary();
-  if (ps) L.push(`Partners (${fmtMonth(ps.period)}): ${money(ps.received)} of ${money(ps.expected)} expected remittances received${ps.late.length ? `; chasing ${ps.late.map(([q, g]) => `${q} for ${money(g)}`).join(" and ")}` : ""}. Rev-share owed to VARs: ${money(ps.owed)}${ps.paid ? ` (${ps.paid} already paid)` : ""}.`);
+  if (ps) L.push(`Partners (${fmtMonth(ps.period)}): ${money(ps.received)} of ${money(ps.expected)} expected partner revenue received${ps.late.length ? `; chasing ${ps.late.map(([q, g]) => `${q} for ${money(g)}`).join(" and ")}` : ""}. Rev-share owed to VARs: ${money(ps.owed)}${ps.paid ? ` (${ps.paid} already paid)` : ""}.`);
   const risks = custRisks(m.chase).slice(0, 3);
   if (risks.length) {
     L.push("", "Top risks");
@@ -864,7 +865,6 @@ const REMIT_ALIASES = {
   date: ["receiveddate", "datereceived", "receivedon", "receivedat", "paymentdate", "date"],
   ref: ["reference", "ref", "memo", "bankreference"],
 };
-const REMIT_TERMS = 15;
 function attrFromInvoices() {
   const rows = S.invoices.filter(i => i.partner && i.paidAt != null && i.amountPaid > 0 && i.status !== "void")
     .sort((a, b) => a.paidAt - b.paidAt)
@@ -873,19 +873,18 @@ function attrFromInvoices() {
 }
 function demoClawback(T) {
   const d = fromDay(T), day = toDay(d.getUTCFullYear(), d.getUTCMonth(), 14);
-  return `Partner A,Contractor H,CN-0007 (refund),${iso(day)},-400.00`;
+  return `Partner A,Contractor H,CN-0007 (refund),${iso(day)},-1000.00`;
 }
 function demoRemitCSV(T) {
-  const d = fromDay(T), base = { "Partner A": 3200, "Partner B": 1450, "Partner C": 2100 }, lag = { "Partner A": 9, "Partner B": 12, "Partner C": 11 };
+  const d = fromDay(T), base = { "Partner D": 3000, "Partner E": 1500 }, lag = { "Partner D": 9, "Partner E": 12 };
   const rows = [["partner", "period", "expected", "received", "received_date", "reference"]];
   for (let k = 3; k >= 1; k--) {
     const first = toDay(d.getUTCFullYear(), d.getUTCMonth() + 1 - k, 1), end = toDay(d.getUTCFullYear(), d.getUTCMonth() + 2 - k, 1) - 1, ym = ymOf(first);
     Object.keys(base).forEach(p => {
-      const exp = Math.round(base[p] * (1 + 0.06 * (3 - k)));
-      let rec = exp; const day = end + lag[p];
-      if (k === 2 && p === "Partner B") rec = exp - 150;
-      if (k === 1 && p === "Partner B") rec = 0;
-      if (k === 1 && p === "Partner C") rec = Math.round(exp * 0.6);
+      const exp = base[p], day = end + lag[p];
+      let rec = exp;
+      if (k === 2 && p === "Partner E") rec = 1000;
+      if (k === 1 && p === "Partner E") rec = 0;
       if (day > T) rec = 0;
       rows.push([p, ym, exp.toFixed(2), rec.toFixed(2), rec ? iso(day) : "", rec ? `ACH ${p.slice(-1)}-${ym.replace("-", "")}` : ""]);
     });
@@ -919,11 +918,11 @@ function parseRemit(text) {
     if (!String(r[c.partner] || "").trim() || !ym || isNaN(expected)) { skipped++; return null; }
     return { partner: String(r[c.partner]).trim(), ym, expected, received: isNaN(received) ? 0 : received, day: c.date != null ? parseDay(r[c.date]) : null, ref: c.ref != null ? String(r[c.ref] || "").trim() : "" };
   }).filter(Boolean);
-  return { rows: out, warn: (skipped ? `${skipped} row${skipped > 1 ? "s" : ""} skipped (missing partner, period or expected). ` : "") + `${out.length} remittance line${out.length === 1 ? "" : "s"} read. Remittances fall due ${REMIT_TERMS} days after period end.` };
+  return { rows: out, warn: (skipped ? `${skipped} row${skipped > 1 ? "s" : ""} skipped (missing partner, period or expected). ` : "") + `${out.length} remittance line${out.length === 1 ? "" : "s"} read.` };
 }
 function remitState(r, asOf) {
   const rec = r.day != null && r.day > asOf ? 0 : r.received;
-  const [y, mo] = r.ym.split("-").map(Number), due = toDay(y, mo + 1, 1) - 1 + REMIT_TERMS;
+  const [y, mo] = r.ym.split("-").map(Number), due = toDay(y, mo + 1, 1) - 1 + S.remitTerms;
   const gap = round2(r.expected - rec);
   let st, cls;
   if (gap <= 0.005) { st = "Received"; cls = "ok"; }
@@ -947,8 +946,8 @@ function calcPayout(lines, rule) {
 }
 function ruleFor(p) { return (S.rules[p] ||= { rate: 15, thr: "", rate2: "", cap: "" }); }
 function partners() {
-  const inData = new Set([...S.attr.map(a => a.partner), ...S.remit.map(a => a.partner)]);
-  return [...new Set([...Object.keys(S.rules).filter(p => S.source.kind === "demo" || inData.has(p)), ...inData])].sort();
+  const inAttr = new Set(S.attr.map(a => a.partner));
+  return [...new Set([...Object.keys(S.rules).filter(p => S.source.kind === "demo" || inAttr.has(p)), ...inAttr])].sort();
 }
 const payKey = p => S.period + "|" + p;
 
@@ -991,28 +990,14 @@ function partnerSummary() {
     owed: st.filter(d => S.paidOut[payKey(d.p)] == null).reduce((s, d) => s + d.c.payout, 0), paid: st.filter(d => S.paidOut[payKey(d.p)] != null && d.c.payout > 0).length,
   };
 }
-const netTxt = n => Math.abs(n) < 0.005 ? '<span class="muted">Settled</span>' : n > 0 ? `<b class="num">${money2(n)}</b><span class="s">they owe us</span>` : `<b class="num">${money2(-n)}</b><span class="s">we owe them</span>`;
 const payChip = (p, c) => S.paidOut[payKey(p)] != null ? `<span class="tier ok">Paid ${fmtShort(S.paidOut[payKey(p)])}</span>` : c.payout > 0 ? `<span class="tier warn">Owed</span>` : `<span class="tier plain">Nothing due</span>`;
 function labelCells(t) {
   const heads = [...t.querySelectorAll("thead th")].map(th => th.textContent);
   t.querySelectorAll("tbody tr").forEach(tr => [...tr.children].forEach((td, i) => { if (heads[i]) { td.dataset.l = heads[i]; td.innerHTML = `<span class="cv">${td.innerHTML}</span>`; } }));
 }
 function renderPosition() {
-  const t = $("posTable");
-  if (!S.period) { t.innerHTML = `<tbody><tr><td class="muted">No partner data yet. Add remittances or attributed revenue below.</td></tr></tbody>`; $("posTitle").textContent = "Partner position"; return; }
-  const rem = remitStates(), tot = { exp: 0, rec: 0, out: 0, pay: 0, owe: 0 };
-  const rows = statementData().map(({ p, c }) => {
-    const cur = rem.filter(r => r.partner === p && r.ym === S.period);
-    const exp = cur.reduce((s, r) => s + r.expected, 0), rec = cur.reduce((s, r) => s + r.rec, 0);
-    const out = rem.filter(r => r.partner === p && r.ym <= S.period).reduce((s, r) => s + r.gap, 0);
-    const owe = S.paidOut[payKey(p)] != null ? 0 : c.payout;
-    tot.exp += exp; tot.rec += rec; tot.out += out; tot.pay += c.payout; tot.owe += owe;
-    return `<tr><td><b>${esc(p)}</b></td><td class="r num">${money2(exp)}</td><td class="r num">${money2(rec)}</td><td class="r num ${out > 0.005 ? "neg" : ""}">${money2(out)}</td><td class="r num">${money2(c.payout)}</td><td>${payChip(p, c)}</td><td class="r">${netTxt(out - owe)}</td></tr>`;
-  });
-  t.innerHTML = `<thead><tr><th>Partner</th><th class="r">Remittance expected</th><th class="r">Received</th><th class="r">Owed to us, to date</th><th class="r">Rev-share earned</th><th>Payout</th><th class="r">Net position</th></tr></thead>
-    <tbody>${rows.join("")}<tr class="tot"><td>Total</td><td class="r num">${money2(tot.exp)}</td><td class="r num">${money2(tot.rec)}</td><td class="r num">${money2(tot.out)}</td><td class="r num">${money2(tot.pay)}</td><td></td><td class="r">${netTxt(tot.out - tot.owe)}</td></tr></tbody>`;
-  labelCells(t);
-  $("posTitle").textContent = `${fmtMonth(S.period)}: ${money(tot.out)} owed to us · ${money(tot.owe)} owed to VARs`;
+  const ps = partnerSummary();
+  $("posTitle").textContent = ps ? `${fmtMonth(ps.period)}: ${money(ps.received)} of ${money(ps.expected)} partner revenue received · ${money(ps.owed)} rev-share owed to VARs` : "Partners";
 }
 function renderRemit() {
   const rem = remitStates(), cur = rem.filter(r => r.ym === S.period), older = rem.filter(r => S.period && r.ym < S.period && r.gap > 0.005);
@@ -1039,7 +1024,7 @@ function renderStatements() {
   if (!S.period) { wrap.innerHTML = `<div class="card"><div class="card-b"><div class="empty">No attributed revenue to calculate yet.</div></div></div>`; $("stmtTitle").textContent = "Statements"; return; }
   const data = statementData(), total = data.reduce((s, d) => s + d.c.payout, 0);
   $("stmtTitle").textContent = `${fmtMonth(S.period)}: ${money2(total)} earned across ${data.filter(d => d.c.payout > 0).length} VAR${data.length === 1 ? "" : "s"}`;
-  const pill = S.source.kind === "demo" ? `<span class="pill demo">Demo data</span>` : `<span class="pill file">Your data</span>`;
+  const pill = S.source.kind === "demo" ? `<span class="pill demo">Sample data</span>` : `<span class="pill file">Your data</span>`;
   wrap.innerHTML = data.map(({ p, lines, c }) => {
     const rateTxt = c.hasTier ? `${pct(c.rate)} to ${money(c.thr)}, ${pct(c.rate2)} above` : `${pct(c.rate)} flat`;
     const paid = S.paidOut[payKey(p)] != null;
@@ -1059,16 +1044,10 @@ function renderStatements() {
 function openPartnerView(p) {
   const d = statementData().find(x => x.p === p); if (!d) return;
   const { lines, c } = d, paidOn = S.paidOut[payKey(p)];
-  const rem = remitStates().filter(r => r.partner === p && r.ym <= S.period && (r.ym === S.period || r.gap > 0.005));
-  const outToUs = rem.reduce((s, r) => s + r.gap, 0);
-  let h = `<div class="pv-top"><div><div class="eyebrow">Rev-share statement</div><h2>${esc(p)}</h2></div>${S.source.kind === "demo" ? '<span class="pill demo">Demo data</span>' : ""}</div>
+  let h = `<div class="pv-top"><div><div class="eyebrow">Rev-share statement</div><h2>${esc(p)}</h2></div>${S.source.kind === "demo" ? '<span class="pill demo">Sample data</span>' : ""}</div>
     <div class="pv-meta"><div><span class="eyebrow">Period</span>${fmtMonth(S.period)}</div><div><span class="eyebrow">Issued</span>${fmtDate(S.asOf)}</div><div><span class="eyebrow">Rev-share payable</span><b class="num">${money2(c.payout)}</b>${paidOn != null ? `<span class="s">Paid ${fmtDate(paidOn)}</span>` : ""}</div></div>
     <h3 class="pv-h">Attributed revenue</h3><table><thead><tr><th>Collected</th><th>Customer · invoice</th><th class="r">Amount</th></tr></thead><tbody>${linesHtml(lines)}</tbody></table>
     <h3 class="pv-h">Calculation</h3><table class="calc"><tbody>${calcHtml(c, lines)}</tbody></table>`;
-  if (rem.length) {
-    h += `<h3 class="pv-h">Your remittances to us</h3><table><thead><tr><th>Period</th><th class="r">Expected</th><th class="r">Received</th><th class="r">Outstanding</th></tr></thead><tbody>${rem.map(r => `<tr><td>${fmtMonth(r.ym)}</td><td class="r num">${money2(r.expected)}</td><td class="r num">${money2(r.rec)}</td><td class="r num">${money2(r.gap)}</td></tr>`).join("")}</tbody></table>`;
-    if (outToUs > 0.005 && paidOn == null) { const n = c.payout - outToUs; h += `<p class="pv-net">Net of outstanding remittances: <b class="num">${money2(Math.abs(n))}</b> ${n >= 0 ? "payable to you" : "payable by you"}.</p>`; }
-  }
   h += `<p class="muted" style="font-size:12px;margin-top:20px">Revenue counts when it's collected. Refunds are netted in the period they happen. Questions on this statement? Reply to the billing inbox.</p>`;
   $("pvBody").innerHTML = h; $("pv").showModal();
 }
@@ -1130,6 +1109,7 @@ $("attrUpload").onclick = () => $("attrFile").click();
 $("attrFile").onchange = e => { const f = e.target.files[0]; if (f) readFile(f, t => { $("attrText").value = t; applyAttr(); refreshPartners(); }); e.target.value = ""; };
 $("attrRebuild").onclick = () => { $("attrText").value = attrFromInvoices(); applyAttr(); refreshPartners(); };
 let attrT; $("attrText").oninput = () => { clearTimeout(attrT); attrT = setTimeout(() => { applyAttr(); refreshPartners(); }, 250); };
+$("remitTerms").oninput = e => { const v = parseInt(e.target.value, 10); S.remitTerms = isNaN(v) ? 0 : v; refreshPartners(); };
 $("remitUpload").onclick = () => $("remitFile").click();
 $("remitFile").onchange = e => { const f = e.target.files[0]; if (f) readFile(f, t => { $("remitText").value = t; applyRemit(); refreshPartners(); }); e.target.value = ""; };
 let remT; $("remitText").oninput = () => { clearTimeout(remT); remT = setTimeout(() => { applyRemit(); refreshPartners(); }, 250); };
