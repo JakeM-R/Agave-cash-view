@@ -1,0 +1,923 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weekly Cash View</title>
+<meta name="description" content="Where's cash this week, who do I chase, and what do we owe each VAR? A client-side weekly cash view built on a Stripe invoice export.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy-900:#111A2C; --navy-800:#1A2539; --navy-700:#243552;
+  --page:#F3F4F3; --card:#FFFFFF; --line:#DCDFDC; --line-strong:#C6CAC6;
+  --green:#5CCB6D; --green-ink:#1F6B2C; --mint:#D8F0E0; --lime:#DDF7A3;
+  --ink:#111A2C; --body:#596071; --muted:#8A909C;
+  --s-billed:#3B5BA5; --s-collected:#3FA653;
+  --age1:#C9D3EA; --age2:#8FA3D3; --age3:#5672B5; --age4:#243552;
+  --amber-bg:#FCEFC7; --amber-ink:#7A5300; --red-bg:#FBDADA; --red-ink:#8E1F1F;
+  --hatch:repeating-linear-gradient(135deg, rgba(17,26,44,.11) 0 1px, transparent 1px 7px);
+  --sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --head:"Inter Tight","Inter",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{background:var(--page)}
+body{margin:0;background:var(--page);color:var(--body);font:14px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--head);color:var(--ink);letter-spacing:-.02em;margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--ink)}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+
+/* Header */
+header.top{background:linear-gradient(180deg,var(--navy-900),var(--navy-700));color:#C9D0DD}
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0 14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:28px;height:28px;border:1px solid rgba(255,255,255,.35);display:grid;place-items:center;background:var(--hatch),transparent}
+.brand-mark span{width:10px;height:10px;background:var(--green);display:block}
+.brand h1{color:#fff;font-size:18px;font-weight:600}
+.brand .eyebrow{color:var(--lime);font-size:10px}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ctl-label{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--lime)}
+input[type=date].dark{background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;padding:7px 8px;border-radius:0;color-scheme:dark;height:36px}
+.btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:0;cursor:pointer;font-weight:500;font-size:13px;white-space:nowrap;text-decoration:none}
+.btn-outline{background:transparent;border:1px solid rgba(255,255,255,.55);color:#fff}
+.btn-outline:hover{background:rgba(255,255,255,.08)}
+.btn-green{background:var(--green);border:1px solid var(--green);color:var(--navy-900)}
+.btn-green:hover{filter:brightness(.95)}
+.btn-line{background:#fff;border:1px solid var(--line-strong);color:var(--ink);height:32px;padding:0 12px}
+.btn-line:hover{border-color:var(--ink)}
+.btn-sm{height:28px;padding:0 10px;font-size:12px}
+.tabs{display:flex;gap:0;margin-top:4px}
+.tab{background:transparent;border:0;border-bottom:2px solid transparent;color:#AEB7C7;padding:12px 16px 10px;cursor:pointer;font-family:var(--head);font-weight:600;font-size:14px}
+.tab[aria-selected=true]{color:#fff;border-bottom-color:var(--green)}
+.tab:hover{color:#fff}
+
+.notice{border-bottom:1px solid var(--line);background:#fff}
+.notice .wrap{display:flex;gap:12px;align-items:center;padding-top:10px;padding-bottom:10px;flex-wrap:wrap;font-size:13px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border:1px solid var(--line-strong);color:var(--ink);background:#fff;white-space:nowrap}
+.pill.demo{background:var(--mint);border-color:#B4DFC1;color:var(--green-ink)}
+.pill.file{background:#E6ECF8;border-color:#BCC9E6;color:#22386A}
+.notice .warn{color:var(--amber-ink)}
+a.arrow{text-decoration:underline;text-underline-offset:3px;font-weight:500;white-space:nowrap;cursor:pointer}
+a.arrow::after{content:" \2192"}
+
+/* Grid with hatched gutters */
+main{padding:20px 0 40px}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;padding:14px;background:var(--hatch),var(--page);border:1px solid var(--line)}
+.card{background:var(--card);border:1px solid var(--line);grid-column:span 12;min-width:0;position:relative}
+.span-7{grid-column:span 7}.span-5{grid-column:span 5}.span-6{grid-column:span 6}.span-4{grid-column:span 4}.span-8{grid-column:span 8}
+.card-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 18px 0}
+.card-h h2{font-size:17px;font-weight:600;margin-top:4px}
+.card-b{padding:14px 18px 18px}
+.card .sub{font-size:13px;color:var(--body);margin:4px 0 0}
+.jd{font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding:10px 18px;margin:0}
+.jd b{font-family:var(--mono);font-weight:500;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:6px}
+
+/* Hero */
+.hero{background:var(--navy-900);border-color:var(--navy-900);color:#C9D0DD;overflow:hidden}
+.hero::after{content:"";position:absolute;right:0;top:0;bottom:0;width:120px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.08) 0 1px,transparent 1px 7px);pointer-events:none}
+.hero .card-b{position:relative;z-index:1;padding:22px 22px 20px}
+.hero .eyebrow{color:var(--lime)}
+.hero h2{color:#fff;font-size:clamp(22px,3.2vw,34px);font-weight:600;line-height:1.15;margin-top:8px;max-width:960px}
+.hero h2 .g{color:var(--green)}
+.hero h2 .sep{color:#55627A;font-weight:400}
+.hero .pill.demo{background:transparent;color:var(--lime);border-color:rgba(221,247,163,.45)}
+.hero .pill.file{background:transparent;color:#C9D6F2;border-color:rgba(201,214,242,.45)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(255,255,255,.12);margin-top:18px;border:1px solid rgba(255,255,255,.12)}
+.kpi{background:var(--navy-800);padding:12px 14px}
+.kpi .eyebrow{color:#8E9AB0;font-size:10px}
+.kpi .v{font-family:var(--head);color:#fff;font-size:20px;font-weight:600;margin-top:2px}
+.kpi .d{font-size:12px;color:#8E9AB0}
+.hero .jd{border-top-color:rgba(255,255,255,.12);color:#8E9AB0;position:relative;z-index:1}
+.hero .jd b{color:#8E9AB0}
+
+/* Charts */
+.chart{width:100%;position:relative}
+.chart svg{display:block;overflow:visible}
+.chart text{font-family:var(--sans);font-size:11px;fill:var(--muted)}
+.chart text.val{fill:var(--ink);font-weight:600;font-size:12px}
+.chart text.lab{fill:var(--ink);font-size:12px}
+.legend{display:flex;gap:16px;font-size:12px;color:var(--body);margin-bottom:8px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px}
+#tip{position:fixed;z-index:50;pointer-events:none;background:var(--navy-900);color:#fff;font-size:12px;padding:7px 9px;border-radius:0;box-shadow:0 4px 14px rgba(0,0,0,.18);opacity:0;transition:opacity .08s;max-width:240px}
+#tip .t{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--lime)}
+[data-tip]{cursor:default}
+.hit{fill:transparent}
+.hit:hover + .bar, .barg:hover .bar{opacity:.85}
+
+/* Tables */
+table{width:100%;border-collapse:collapse}
+th{font-family:var(--mono);font-weight:500;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle;color:var(--ink)}
+td.r,th.r{text-align:right}
+td .s{display:block;color:var(--muted);font-size:12px}
+tr.draft td{background:#FAFBFA;padding:0}
+.tier{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;white-space:nowrap}
+.tier::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.tier.nudge{background:var(--mint);color:var(--green-ink)}
+.tier.firm{background:var(--amber-bg);color:var(--amber-ink)}
+.tier.escalate{background:var(--red-bg);color:var(--red-ink)}
+.draftbox{padding:14px 16px;display:grid;gap:10px}
+.draftbox pre{margin:0;white-space:pre-wrap;font:13px/1.55 var(--sans);color:var(--ink);background:#fff;border:1px solid var(--line);padding:12px 14px}
+.draftbox .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.grace{font-size:12px;color:var(--muted);padding:10px 0 0}
+.empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line-strong)}
+
+/* Aging bars list */
+.age-total{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.age-total .v{font-family:var(--head);font-weight:600;font-size:22px;color:var(--ink)}
+
+/* VAR tab */
+.rules td{padding:6px 8px}
+.rules td:first-child{white-space:nowrap}
+.rules input{width:100%;min-width:70px;border:1px solid var(--line-strong);border-radius:0;padding:6px 8px;background:#fff;text-align:right}
+.rules input:focus,textarea:focus,select:focus{outline:2px solid var(--green);outline-offset:-1px}
+.inwrap{position:relative;display:block}
+.inwrap span{position:absolute;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;pointer-events:none}
+.inwrap.pre span{left:8px}.inwrap.pre input{padding-left:18px}
+.inwrap.suf span{right:8px}.inwrap.suf input{padding-right:22px}
+textarea{width:100%;min-height:170px;white-space:pre;overflow-x:auto;border:1px solid var(--line-strong);border-radius:0;padding:10px;font:12px/1.5 var(--mono);color:var(--ink);background:#fff;resize:vertical}
+select.plain{border:1px solid var(--line-strong);border-radius:0;padding:6px 8px;background:#fff;height:32px}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.stmt-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line);background:var(--hatch),#FBFCFB}
+.stmt-head h3{font-size:18px;font-weight:600;margin-top:4px}
+.stmt-pay{text-align:right}
+.stmt-pay .v{font-family:var(--head);font-size:24px;font-weight:600;color:var(--ink)}
+.calc td{border-bottom:1px dotted var(--line);padding:7px 10px;font-size:13px}
+.calc tr.total td{border-top:2px solid var(--ink);border-bottom:0;font-weight:600;font-size:14px;background:var(--mint)}
+.calc tr.cap td{color:var(--red-ink)}
+.calc td .s{display:inline;margin-left:6px}
+.statements{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.statements .card{grid-column:auto}
+.check{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--navy-900);color:#fff;font-size:10px;margin-right:6px;vertical-align:-3px}
+.method li{margin:4px 0}
+.method{margin:0;padding-left:0;list-style:none;font-size:13px}
+footer{font-size:12px;color:var(--muted);padding:0 0 32px}
+.dropping::after{content:"Drop the CSV to load it";position:fixed;inset:12px;border:2px dashed var(--green);background:rgba(17,26,44,.82);color:#fff;display:grid;place-items:center;font:600 22px var(--head);z-index:60}
+.hidden{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+@media (max-width:900px){
+  .span-7,.span-5,.span-6,.span-4,.span-8{grid-column:span 12}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:640px){
+  .wrap{padding:0 16px}
+  .grid{padding:8px;gap:8px}
+  .card-h{padding:14px 14px 0}.card-b{padding:12px 14px 14px}.jd{padding:10px 14px}
+  .hero .card-b{padding:18px 16px}
+  .hero::after{width:48px}
+  .controls{width:100%}
+  .controls .btn{flex:1 1 auto;justify-content:center}
+  .tab{padding:12px 10px 10px}
+  .chase thead{display:none}
+  .chase table,.chase tbody{display:block}
+  .chase tr.item{display:grid;grid-template-columns:1fr auto;grid-template-areas:"cust amt" "meta act";gap:6px 10px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .chase tr.item td{border:0;padding:0}
+  .chase tr.item td.c-inv,.chase tr.item td.c-due{display:none}
+  .chase tr.item td.c-cust{grid-area:cust}
+  .chase tr.item td.c-amt{grid-area:amt}
+  .chase tr.item td.c-days{grid-area:meta;text-align:left;color:var(--muted);font-size:12px;padding-left:96px}
+  .chase tr.item td.c-tier{grid-area:meta;align-self:center}
+  .chase tr.item td.c-act{grid-area:act;justify-self:end}
+  .chase tr.draft{display:block}.chase tr.draft.hidden{display:none!important}.chase tr.draft td{display:block}
+  .rules th,.rules td{white-space:nowrap}
+  .statements{grid-template-columns:1fr}
+  .rules-wrap{overflow-x:auto}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><span></span></div>
+        <div>
+          <div class="eyebrow">Billing &amp; payments · ops</div>
+          <h1>Weekly cash view</h1>
+        </div>
+      </div>
+      <div class="controls">
+        <label class="ctl-label" for="asof">As of</label>
+        <input type="date" id="asof" class="dark">
+        <button class="btn btn-green" id="uploadBtn" type="button">Load Stripe CSV</button>
+        <button class="btn btn-outline hidden" id="resetBtn" type="button">Back to demo</button>
+        <input type="file" id="fileIn" accept=".csv,text/csv" class="hidden">
+      </div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-cash" aria-controls="panel-cash" aria-selected="true">Weekly cash</button>
+      <button class="tab" role="tab" id="tab-var" aria-controls="panel-var" aria-selected="false">VAR payouts</button>
+    </div>
+  </div>
+</header>
+
+<div class="notice"><div class="wrap" id="notice"></div></div>
+
+<main>
+<div class="wrap">
+
+<section id="panel-cash" role="tabpanel" aria-labelledby="tab-cash">
+  <div class="grid">
+    <div class="card hero">
+      <div class="card-b">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+          <div class="eyebrow" id="heroEyebrow">Week of</div>
+          <span class="src-pill"></span>
+        </div>
+        <h2 id="headline"></h2>
+        <div class="kpis" id="kpis"></div>
+      </div>
+      <p class="jd"><b>From the JD</b>"Stand up billing and payment reporting that gives leadership a clean weekly view of cash."</p>
+    </div>
+
+    <div class="card span-7">
+      <div class="card-h"><div><div class="eyebrow">Collected · last 8 weeks</div><h2>Cash collected by week</h2><p class="sub" id="weeklySub"></p></div><span class="src-pill"></span></div>
+      <div class="card-b"><div class="legend"><span><i style="background:var(--s-collected)"></i>Full week</span><span><i style="background:repeating-linear-gradient(45deg,var(--s-collected) 0 2px,#E3F4E6 2px 5px);outline:1px solid var(--s-collected)"></i>This week to date</span><span id="avgLegend"></span></div><div class="chart" id="weeklyChart"></div></div>
+    </div>
+
+    <div class="card span-5">
+      <div class="card-h"><div><div class="eyebrow">Receivables aging</div><h2>Outstanding by days overdue</h2></div><span class="src-pill"></span></div>
+      <div class="card-b"><div id="agingTotal" class="age-total"></div><div class="chart" id="agingChart"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><div><div class="eyebrow">By revenue stream</div><h2>Billed vs collected</h2><p class="sub" id="streamSub"></p></div><span class="src-pill"></span></div>
+      <div class="card-b">
+        <div class="legend"><span><i style="background:var(--s-billed)"></i>Billed</span><span><i style="background:var(--s-collected)"></i>Collected</span></div>
+        <div class="chart" id="streamChart"></div>
+      </div>
+    </div>
+
+    <div class="card chase">
+      <div class="card-h"><div><div class="eyebrow">Chase list</div><h2>Who to chase, in order</h2><p class="sub">Sorted by amount × days overdue. Each row has a follow-up drafted for its tier: nudge at 7+ days, firm at 30+, escalate at 60+.</p></div><span class="src-pill"></span></div>
+      <div class="card-b"><div id="chaseList"></div></div>
+      <p class="jd"><b>From the JD</b>"Track customer payments: what's been billed, what's been collected, and what's outstanding, and follow up on anything late."</p>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><div><div class="eyebrow">Method</div><h2>How the numbers are worked out</h2></div></div>
+      <div class="card-b">
+        <ul class="method">
+          <li><span class="check">✓</span>Void, draft and uncollectible invoices are excluded from billed, outstanding and the chase list.</li>
+          <li><span class="check">✓</span>Outstanding uses amount remaining, so a part-paid invoice only counts what's still owed.</li>
+          <li><span class="check">✓</span>Everything is computed as of the selected date: invoices created later are ignored, and an invoice paid after that date counts as outstanding on it.</li>
+          <li><span class="check">✓</span>Collected means amount paid, dated by the paid-at date. Weeks run Monday to Sunday; the current week runs to the as-of date.</li>
+          <li><span class="check">✓</span>Days overdue counts from the due date (or the invoice date for auto-charged invoices with no due date). Invoices 1 to 6 days late are listed as in grace with no follow-up drafted.</li>
+          <li><span class="check">✓</span>Column names are matched loosely, so "Amount Due", "amount_due" and "Total" all work. Revenue stream comes from a <code>stream</code> metadata column if present, otherwise it's inferred from the description.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="panel-var" role="tabpanel" aria-labelledby="tab-var" class="hidden">
+  <div class="grid">
+    <div class="card span-7">
+      <div class="card-h"><div><div class="eyebrow">Rules</div><h2>Rev-share rules per partner</h2><p class="sub">Base rate up to the threshold, tier rate on revenue above it, and an optional cap per period. Leave threshold blank for a flat rate, cap blank for no cap.</p></div><span class="src-pill"></span></div>
+      <div class="card-b rules-wrap"><table class="rules" id="rulesTable"></table></div>
+    </div>
+    <div class="card span-5">
+      <div class="card-h"><div><div class="eyebrow">Attributed revenue</div><h2>Collected revenue by partner</h2><p class="sub">Paste or upload CSV with partner, customer, invoice, date, amount.</p></div><span class="src-pill"></span></div>
+      <div class="card-b">
+        <textarea id="attrText" spellcheck="false" aria-label="Attributed revenue CSV"></textarea>
+        <div class="toolbar">
+          <button class="btn btn-line" id="attrUpload" type="button">Upload CSV</button>
+          <button class="btn btn-line" id="attrRebuild" type="button">Rebuild from invoices</button>
+          <input type="file" id="attrFile" accept=".csv,.tsv,text/csv" class="hidden">
+        </div>
+        <div class="grace" id="attrNote"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h" style="padding-bottom:16px;align-items:center;flex-wrap:wrap">
+        <div><div class="eyebrow">Payout statements</div><h2 id="stmtTitle">Statements</h2></div>
+        <div class="toolbar" style="margin:0">
+          <label class="eyebrow" for="period">Period</label>
+          <select id="period" class="plain"></select>
+          <button class="btn btn-green" id="exportAll" type="button" style="height:32px">Export CSV</button>
+        </div>
+      </div>
+      <p class="jd"><b>From the JD</b>"Manage rev-share calculations and payouts to VARs."</p>
+    </div>
+    <div class="statements" id="statements" style="grid-column:1/-1"></div>
+  </div>
+</section>
+
+</div>
+</main>
+<footer><div class="wrap">Runs entirely in your browser: files you load are parsed locally and never uploaded. Demo customers and partners are fictional. An independent proof-of-work build, not affiliated with or endorsed by any company named in a job description. <a class="arrow" id="demoDl">Download the demo CSV</a></div></footer>
+<div id="tip" role="tooltip"></div>
+
+<script>
+"use strict";
+/* ---------- dates & formatting ---------- */
+const DAY = 86400000;
+const toDay = (y, m, d) => Math.floor(Date.UTC(y, m - 1, d) / DAY);
+const fromDay = n => new Date(n * DAY);
+const iso = n => fromDay(n).toISOString().slice(0, 10);
+const todayDay = () => { const d = new Date(); return toDay(d.getFullYear(), d.getMonth() + 1, d.getDate()); };
+const mondayOf = n => n - ((fromDay(n).getUTCDay() + 6) % 7);
+const fmtDate = n => fromDay(n).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+const fmtShort = n => fromDay(n).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const fmtMonth = ym => { const [y, m] = ym.split("-").map(Number); return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }); };
+const ymOf = n => iso(n).slice(0, 7);
+const addBizDays = (n, k) => { while (k > 0) { n++; const w = fromDay(n).getUTCDay(); if (w !== 0 && w !== 6) k--; } return n; };
+const round2 = v => Math.round(v * 100) / 100;
+const money = v => (v < 0 ? "−$" : "$") + Math.round(Math.abs(v)).toLocaleString("en-US");
+const money2 = v => (v < 0 ? "−$" : "$") + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const moneyK = v => Math.abs(v) >= 1000 ? "$" + (v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k" : "$" + Math.round(v);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pct = v => (Math.round(v * 1000) / 10).toString() + "%";
+
+/* ---------- CSV ---------- */
+function parseCSV(text) {
+  text = String(text).replace(/^﻿/, "");
+  const first = text.split(/\r?\n/, 1)[0] || "";
+  const delim = (first.match(/\t/g) || []).length > (first.match(/,/g) || []).length ? "\t" : ",";
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
+      else f += c;
+    } else if (c === '"') q = true;
+    else if (c === delim) { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+    else f += c;
+  }
+  if (f !== "" || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim() !== ""));
+}
+const csvCell = v => { const s = String(v ?? ""); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+const toCSV = rows => rows.map(r => r.map(csvCell).join(",")).join("\n");
+const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
+function mapCols(header, aliases) {
+  const H = header.map(norm), m = {};
+  for (const k in aliases) for (const a of aliases[k]) { const i = H.indexOf(a); if (i >= 0) { m[k] = i; break; } }
+  return m;
+}
+function num(s) {
+  if (s == null) return NaN; s = String(s).trim(); if (!s) return NaN;
+  const neg = /^\(.*\)$/.test(s) || /^-/.test(s.replace(/[^0-9.\-]/g, ""));
+  const v = parseFloat(s.replace(/[^0-9.]/g, ""));
+  return isNaN(v) ? NaN : (neg ? -v : v);
+}
+function parseDay(s) {
+  if (s == null) return null; s = String(s).trim(); if (!s) return null;
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if (m) return toDay(+m[1], +m[2], +m[3]);
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/); if (m) { let y = +m[3]; if (y < 100) y += 2000; return toDay(y, +m[1], +m[2]); }
+  if (/^\d{10}$/.test(s)) return Math.floor(+s / 86400);
+  const t = Date.parse(s); if (!isNaN(t)) { const d = new Date(t); return toDay(d.getFullYear(), d.getMonth() + 1, d.getDate()); }
+  return null;
+}
+
+const INV_ALIASES = {
+  id: ["id", "invoiceid"],
+  number: ["number", "invoicenumber", "invoiceno"],
+  name: ["customername", "customerdescription", "name", "billingname", "customer"],
+  email: ["customeremail", "email", "billingemail"],
+  desc: ["description", "lineitemdescription", "productname", "product", "memo", "lineitems"],
+  due_amt: ["amountdue", "total", "amount", "invoiceamount", "subtotal"],
+  paid_amt: ["amountpaid", "paidamount"],
+  rem_amt: ["amountremaining", "remaining", "balance", "amountoutstanding", "balancedue"],
+  currency: ["currency"],
+  status: ["status", "invoicestatus"],
+  paid_flag: ["paid"],
+  created: ["dateutc", "date", "createdutc", "created", "invoicedate", "createdat", "finalizedatutc", "finalizedat"],
+  due: ["duedateutc", "duedate", "due", "dueon"],
+  paid_at: ["paidatutc", "paidat", "statustransitionspaidat", "statustransitionspaidatutc", "paiddate", "paymentdate", "datepaid"],
+  stream: ["streammetadata", "metadatastream", "stream", "revenuestream", "streamtype", "category"],
+  partner: ["partnermetadata", "metadatapartner", "partner", "var", "reseller", "partnername", "varmetadata", "metadatavar"],
+  url: ["hostedinvoiceurl", "invoiceurl", "paymentlink"],
+};
+const EXCLUDED = new Set(["void", "uncollectible", "draft"]);
+const STREAMS = ["Subscriptions", "Add-ons", "Partner"];
+
+function normStream(v, partner, desc) {
+  const s = norm(v || "");
+  if (s) { if (s.includes("partner") || s.includes("var") || s.includes("resell")) return "Partner"; if (s.includes("add")) return "Add-ons"; if (s.includes("sub")) return "Subscriptions"; return String(v).trim(); }
+  if (partner) return "Partner";
+  if (/add-?on|seat|onboarding|implementation|support|setup|training|one-?off/i.test(desc || "")) return "Add-ons";
+  return "Subscriptions";
+}
+function normStatus(v, flag, rem) {
+  const s = norm(v || "");
+  if (s.includes("void")) return "void";
+  if (s.includes("uncollect")) return "uncollectible";
+  if (s.includes("draft")) return "draft";
+  if (s === "paid") return "paid";
+  if (s) return "open";
+  if (/^(true|yes|1)$/i.test(String(flag || "").trim())) return "paid";
+  return rem > 0 ? "open" : "paid";
+}
+
+function parseInvoices(text) {
+  const rows = parseCSV(text);
+  if (rows.length < 2) throw new Error("That file has no data rows.");
+  const header = rows[0], c = mapCols(header, INV_ALIASES);
+  if (c.due_amt == null) throw new Error("Couldn't find an amount column (looked for Amount Due, Total or Amount).");
+  if (c.created == null && c.due == null) throw new Error("Couldn't find a date column (looked for Date (UTC), Created or Due Date).");
+  const warn = [], counts = { rows: rows.length - 1, excluded: 0, inferredStream: 0, noPaidAt: 0, skipped: 0 };
+  if (c.paid_at == null) warn.push("No paid-at column, so paid invoices are dated by due date (or invoice date) for weekly collections.");
+  if (c.stream == null) counts.inferredStream = -1;
+  const g = (r, k) => c[k] == null ? "" : (r[c[k]] ?? "");
+  const currencies = new Set();
+  const out = [];
+  rows.slice(1).forEach((r, idx) => {
+    const amountDue = num(g(r, "due_amt"));
+    const created = parseDay(g(r, "created")) ?? parseDay(g(r, "due"));
+    if (isNaN(amountDue) || created == null) { counts.skipped++; return; }
+    let paid = num(g(r, "paid_amt")), rem = num(g(r, "rem_amt"));
+    const status = normStatus(g(r, "status"), g(r, "paid_flag"), isNaN(rem) ? (isNaN(paid) ? amountDue : amountDue - paid) : rem);
+    if (isNaN(paid)) paid = status === "paid" ? amountDue : (isNaN(rem) ? 0 : Math.max(0, amountDue - rem));
+    if (isNaN(rem)) rem = status === "paid" ? 0 : Math.max(0, amountDue - paid);
+    const due = parseDay(g(r, "due"));
+    let paidAt = parseDay(g(r, "paid_at"));
+    if (status === "paid" && paidAt == null) { paidAt = due ?? created; counts.noPaidAt++; }
+    if (status !== "paid" && rem <= 0 && paidAt == null && paid > 0) paidAt = due ?? created;
+    const partner = String(g(r, "partner")).trim();
+    const desc = String(g(r, "desc")).trim();
+    let name = String(g(r, "name")).trim();
+    if (!name || /^cus_/.test(name)) name = String(g(r, "email")).trim() || name || "Unknown customer";
+    if (c.currency != null && g(r, "currency")) currencies.add(String(g(r, "currency")).toUpperCase());
+    const inv = {
+      id: String(g(r, "id")).trim() || "row-" + (idx + 2), number: String(g(r, "number")).trim() || String(g(r, "id")).trim() || "Row " + (idx + 2),
+      customer: name, email: String(g(r, "email")).trim(), desc, partner, url: String(g(r, "url")).trim(),
+      stream: normStream(g(r, "stream"), partner, desc),
+      amountDue, amountPaid: paid, amountRemaining: rem, status, created, due, paidAt,
+    };
+    if (EXCLUDED.has(status)) counts.excluded++;
+    out.push(inv);
+  });
+  if (currencies.size > 1) warn.push("Multiple currencies found (" + [...currencies].join(", ") + "). Amounts are summed as-is, not converted.");
+  if (counts.noPaidAt > 0 && c.paid_at != null) warn.push(counts.noPaidAt + " paid invoices had no paid-at date; dated by due date instead.");
+  if (counts.skipped) warn.push(counts.skipped + " rows skipped (no amount or date).");
+  return { invoices: out, counts, warn, hasPartner: c.partner != null };
+}
+
+/* ---------- demo data ---------- */
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function demoCSV(T) {
+  const rnd = mulberry32(20261018);
+  // letter, stream, price per invoice, cadence (m = monthly, q = quarterly), billing offset in days, partner
+  const CUST = [
+    ["A", "Subscriptions", 799, "m", 3], ["B", "Subscriptions", 3897, "q", 40], ["C", "Subscriptions", 499, "m", 12],
+    ["D", "Subscriptions", 1299, "m", 26], ["E", "Subscriptions", 299, "m", 17], ["F", "Subscriptions", 1497, "q", 70],
+    ["G", "Partner", 2499, "m", 22, "Partner A"], ["H", "Partner", 1999, "m", 5, "Partner A"], ["I", "Partner", 1499, "m", 9, "Partner A"],
+    ["J", "Subscriptions", 799, "m", 21], ["K", "Subscriptions", 299, "m", 14], ["L", "Partner", 1299, "m", 7, "Partner B"],
+    ["M", "Subscriptions", 1299, "m", 25], ["N", "Partner", 999, "m", 19, "Partner B"], ["O", "Partner", 2999, "m", 2, "Partner C"],
+    ["P", "Subscriptions", 799, "m", 28], ["Q", "Subscriptions", 2397, "q", 55], ["R", "Partner", 2499, "m", 11, "Partner C"],
+    ["S", "Subscriptions", 499, "m", 15], ["T", "Subscriptions", 499, "m", 20],
+  ];
+  // Seeded states: unpaid (overdue), partial, void
+  const UNPAID = new Set(["D0", "D1", "G0", "J2", "P0", "T2", "T3", "E0"]);
+  const inv = [];
+  for (const [L, stream, price, cad, off, partner] of CUST) {
+    const step = cad === "m" ? 30 : 91;
+    const lookback = L === "T" ? 115 : 95;
+    for (let k = 0; off + step * k <= lookback; k++) {
+      const created = T - off - step * k, due = created + 14, key = L + k;
+      const rec = { L, stream, partner: partner || "", amount: price, created, due,
+        desc: stream === "Partner" ? `Platform subscription (monthly), via ${partner}` : `Platform subscription (${cad === "m" ? "monthly" : "quarterly"})`,
+        status: "paid", paid: price, paidAt: null };
+      if (key === "A2") { rec.status = "void"; rec.paid = 0; rec.desc += ", voided and reissued"; }
+      else if (UNPAID.has(key)) { rec.status = "open"; rec.paid = 0; }
+      else if (key === "M1") { rec.status = "open"; rec.paid = 600; }
+      else if (due > T) {
+        if (rnd() < 0.4) rec.paidAt = Math.min(T, created + 1 + Math.floor(rnd() * Math.max(1, T - created)));
+        else { rec.status = "open"; rec.paid = 0; }
+      } else rec.paidAt = Math.max(created + 1, Math.min(T, due + Math.round(rnd() * 12 - 8)));
+      inv.push(rec);
+    }
+  }
+  const ADDONS = [
+    ["K", "Extra seats (5)", 199, 23, 9, "open"], ["S", "Data sync add-on", 450, 69, 55, "open"],
+    ["Q", "Onboarding package", 1500, 98, 84, "open"], ["B", "Implementation fee", 2500, 126, 112, "open"],
+    ["F", "Premium support add-on", 350, 154, 140, "uncollectible"], ["C", "Reporting add-on", 299, 40, 26, "paid"],
+  ];
+  for (const [L, desc, amount, cOff, dOff, status] of ADDONS) {
+    const rec = { L, stream: "Add-ons", partner: "", amount, created: T - cOff, due: T - dOff, desc, status, paid: status === "paid" ? amount : 0, paidAt: null };
+    if (status === "paid") rec.paidAt = rec.due - 3;
+    inv.push(rec);
+  }
+  inv.sort((a, b) => a.created - b.created || a.L.localeCompare(b.L));
+  const header = ["id", "Number", "Customer Name", "Customer Email", "Description", "Amount Due", "Amount Paid", "Amount Remaining", "Currency", "Status", "Date (UTC)", "Due Date (UTC)", "Paid At (UTC)", "stream (metadata)", "partner (metadata)"];
+  const rows = [header];
+  inv.forEach((r, i) => {
+    const n = String(i + 1).padStart(4, "0");
+    const rem = r.status === "open" ? r.amount - r.paid : 0;
+    rows.push(["in_demo_" + n, "DEMO-" + n, "Contractor " + r.L, "billing@contractor-" + r.L.toLowerCase() + ".example",
+      r.desc, r.amount.toFixed(2), r.paid.toFixed(2), rem.toFixed(2), "usd", r.status,
+      iso(r.created) + " 09:00", iso(r.due), r.paidAt != null ? iso(r.paidAt) + " 14:30" : "", r.stream.toLowerCase(), r.partner]);
+  });
+  return toCSV(rows);
+}
+const DEFAULT_RULES = {
+  "Partner A": { rate: 20, thr: 5000, rate2: 25, cap: 1500 },
+  "Partner B": { rate: 15, thr: 3000, rate2: 20, cap: "" },
+  "Partner C": { rate: 20, thr: 4000, rate2: 30, cap: 1000 },
+};
+
+/* ---------- state ---------- */
+const S = { invoices: [], parse: null, source: { kind: "demo", name: "" }, asOf: todayDay(), rules: structuredClone(DEFAULT_RULES), period: null, attr: [], attrWarn: "" };
+let DEMO_TEXT = "";
+
+/* ---------- metrics ---------- */
+function compute(asOf) {
+  const live = S.invoices.filter(i => !EXCLUDED.has(i.status) && i.created <= asOf);
+  const outstandingOf = i => i.paidAt != null && i.paidAt <= asOf ? (i.status === "paid" ? 0 : i.amountRemaining) : (i.paidAt != null ? i.amountDue : i.amountRemaining);
+  const items = live.map(i => { const o = outstandingOf(i); const due = i.due ?? i.created; return { ...i, out: o, dueEff: due, dOver: asOf - due }; }).filter(i => i.out > 0.005);
+  const mon = mondayOf(asOf);
+  const collectedIn = (a, b) => S.invoices.filter(i => i.status !== "void" && i.status !== "draft" && i.paidAt != null && i.paidAt >= a && i.paidAt <= b && i.paidAt <= asOf).reduce((s, i) => s + i.amountPaid, 0);
+  const weeks = [];
+  for (let w = 7; w >= 0; w--) { const a = mon - 7 * w, b = Math.min(a + 6, asOf); weeks.push({ start: a, end: b, v: collectedIn(a, b), current: w === 0 }); }
+  const winStart = mon - 49;
+  const streams = {};
+  const streamKeys = [...new Set([...STREAMS, ...S.invoices.map(i => i.stream)])];
+  streamKeys.forEach(k => streams[k] = { billed: 0, collected: 0 });
+  live.filter(i => i.created >= winStart).forEach(i => streams[i.stream].billed += i.amountDue);
+  S.invoices.filter(i => i.status !== "void" && i.status !== "draft" && i.paidAt != null && i.paidAt >= winStart && i.paidAt <= asOf).forEach(i => streams[i.stream].collected += i.amountPaid);
+  const buckets = [
+    { k: "Not yet due", lo: -Infinity, hi: 0, v: 0, n: 0, color: "var(--line-strong)" },
+    { k: "1–30 days", lo: 1, hi: 30, v: 0, n: 0, color: "var(--age1)" },
+    { k: "31–60 days", lo: 31, hi: 60, v: 0, n: 0, color: "var(--age2)" },
+    { k: "61–90 days", lo: 61, hi: 90, v: 0, n: 0, color: "var(--age3)" },
+    { k: "90+ days", lo: 91, hi: Infinity, v: 0, n: 0, color: "var(--age4)" },
+  ];
+  items.forEach(i => { const b = buckets.find(b => i.dOver >= b.lo && i.dOver <= b.hi); b.v += i.out; b.n++; });
+  const tierOf = d => d >= 60 ? "escalate" : d >= 30 ? "firm" : d >= 7 ? "nudge" : null;
+  const chase = items.filter(i => i.dOver >= 7).map(i => ({ ...i, tier: tierOf(i.dOver), score: i.out * i.dOver })).sort((a, b) => b.score - a.score);
+  const grace = items.filter(i => i.dOver >= 1 && i.dOver < 7);
+  const byCust = {};
+  items.filter(i => i.dOver >= 1).forEach(i => { (byCust[i.customer] ||= { v: 0, n: 0 }); byCust[i.customer].v += i.out; byCust[i.customer].n++; });
+  const outstanding = items.reduce((s, i) => s + i.out, 0);
+  const overdue = items.filter(i => i.dOver >= 1).reduce((s, i) => s + i.out, 0);
+  const billedWin = live.filter(i => i.created >= winStart).reduce((s, i) => s + i.amountDue, 0);
+  const collectedWin = weeks.reduce((s, w) => s + w.v, 0);
+  return { mon, weeks, streams, streamKeys, buckets, chase, grace, byCust, outstanding, overdue, billedWin, collectedWin, winStart };
+}
+
+/* ---------- drafts ---------- */
+function draftFor(i, asOf, byCust) {
+  const amt = money2(i.out), due = fmtDate(i.dueEff), d = i.dOver;
+  const link = i.url || "[payment link]";
+  const other = byCust[i.customer] && byCust[i.customer].n > 1 ? byCust[i.customer] : null;
+  const otherLine = other ? `\n\nFor completeness, your account has ${other.n} overdue invoices totalling ${money2(other.v)}. Happy to send a single statement if that's easier to process.` : "";
+  const to = i.email ? `To: ${i.email}\n` : "";
+  if (i.tier === "nudge") return `${to}Subject: Quick reminder: invoice ${i.number} (${amt})
+
+Hi ${i.customer} team,
+
+A quick nudge that invoice ${i.number} for ${amt} was due on ${due} and still shows as unpaid on our side. If it's already in your payment run, please ignore this. If not, you can pay here: ${link}${otherLine}
+
+Thanks,
+[Your name]`;
+  if (i.tier === "firm") return `${to}Subject: Invoice ${i.number} is ${d} days overdue
+
+Hi ${i.customer} team,
+
+Invoice ${i.number} for ${amt} was due on ${due} and is now ${d} days overdue. Could you confirm a payment date by ${fmtDate(addBizDays(asOf, 3))}?
+
+If something is holding it up (a PO number, a new billing contact, a question on the amount), reply here and I'll sort it this week.
+
+Pay here: ${link}${otherLine}
+
+Thanks,
+[Your name]`;
+  return `${to}Subject: Action needed: ${amt} overdue since ${due}
+Cc: [Account owner]
+
+Hi ${i.customer} team,
+
+Invoice ${i.number} for ${amt} is now ${d} days past due, and we haven't been able to confirm a payment date. I've copied [account owner] so we can resolve it together.
+
+We need either payment or a confirmed payment date by ${fmtDate(addBizDays(asOf, 5))}. After that, we'll need to review the account under our payment terms, which we'd rather avoid.
+
+Pay here: ${link}${otherLine}
+
+Thanks,
+[Your name]`;
+}
+
+/* ---------- charts ---------- */
+const topRound = (x, y, w, h, r) => { r = Math.min(r, w / 2, h); if (h <= 0) return ""; return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`; };
+const rightRound = (x, y, w, h, r) => { r = Math.min(r, h / 2, w); if (w <= 0) return ""; return `M${x},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h - r}Q${x + w},${y + h} ${x + w - r},${y + h}H${x}Z`; };
+function niceMax(v) { if (v <= 0) return 1000; const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p; return 10 * p; }
+
+function weeklyChart(el, weeks) {
+  const W = Math.max(280, el.clientWidth), H = 220, pl = 44, pr = 8, pt = 22, pb = 28;
+  const max = niceMax(Math.max(...weeks.map(w => w.v)) * 1.08);
+  const iw = W - pl - pr, ih = H - pt - pb, bw = iw / weeks.length, gap = Math.max(6, bw * 0.28);
+  let s = `<svg width="${W}" height="${H}" role="img" aria-label="Cash collected by week, last 8 weeks">`;
+  for (let t = 0; t <= 4; t++) { const v = max * t / 4, y = pt + ih - ih * t / 4; s += `<line x1="${pl}" x2="${W - pr}" y1="${y}" y2="${y}" stroke="${t ? "#EEF0EE" : "#C6CAC6"}"/><text x="${pl - 8}" y="${y + 4}" text-anchor="end">${moneyK(v)}</text>`; }
+  const avg = weeks.slice(0, 7).reduce((a, w) => a + w.v, 0) / 7;
+  weeks.forEach((w, i) => {
+    const x = pl + i * bw + gap / 2, h = ih * w.v / max, y = pt + ih - h, bwi = bw - gap;
+    const tip = `<div class='t'>${w.current ? "This week (to date)" : "Week of " + fmtShort(w.start)}</div>${money(w.v)} collected<br><span style='color:#9AA6BC'>${fmtShort(w.start)} – ${fmtShort(w.end)}</span>`;
+    s += `<g class="barg" data-tip="${esc(tip)}"><rect class="hit" x="${pl + i * bw}" y="${pt}" width="${bw}" height="${ih}"/>`;
+    s += `<path class="bar" d="${topRound(x, y, bwi, h, 4)}" fill="${w.current ? "url(#hatchG)" : "var(--s-collected)"}" ${w.current ? 'stroke="var(--s-collected)" stroke-width="1.5"' : ""}/></g>`;
+    if (w.current || bw >= 54 || i % 2 === 1) s += `<text x="${x + bwi / 2}" y="${H - 8}" text-anchor="middle" ${w.current ? 'class="lab"' : ""}>${w.current ? "This wk" : fmtShort(w.start)}</text>`;
+    if (w.current) s += `<text class="val" x="${x + bwi / 2}" y="${y - 6}" text-anchor="middle">${money(w.v)}</text>`;
+  });
+  const ay = pt + ih - ih * avg / max;
+  s += `<line x1="${pl}" x2="${W - pr}" y1="${ay}" y2="${ay}" stroke="var(--ink)" stroke-dasharray="3 4" stroke-width="1" opacity=".55"/>`;
+  s += `<defs><pattern id="hatchG" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#E3F4E6"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--s-collected)" stroke-width="2"/></pattern></defs></svg>`;
+  el.innerHTML = s;
+}
+
+function hbarChart(el, rows, opts) {
+  // rows: [{label, sub, bars:[{v, color, tip, label}]}]
+  const W = Math.max(280, el.clientWidth), lw = opts.labelW ?? (W < 480 ? 92 : 130), vw = opts.valW ?? 74, bh = opts.barH ?? 14, bg = 2, rg = opts.rowGap ?? 16;
+  const nb = rows[0]?.bars.length || 1, rowH = nb * bh + (nb - 1) * bg;
+  const H = rows.length * rowH + (rows.length - 1) * rg + 4;
+  const max = opts.max ?? Math.max(1, ...rows.flatMap(r => r.bars.map(b => b.v)));
+  const iw = W - lw - vw;
+  let s = `<svg width="${W}" height="${H}" role="img" aria-label="${esc(opts.aria)}">`;
+  rows.forEach((r, ri) => {
+    const y0 = ri * (rowH + rg) + 2;
+    s += `<text class="lab" x="0" y="${y0 + rowH / 2 + (r.sub ? -2 : 4)}">${esc(r.label)}</text>`;
+    if (r.sub) s += `<text x="0" y="${y0 + rowH / 2 + 12}">${esc(r.sub)}</text>`;
+    s += `<line x1="${lw}" x2="${lw}" y1="${y0 - 3}" y2="${y0 + rowH + 3}" stroke="#C6CAC6"/>`;
+    r.bars.forEach((b, bi) => {
+      const y = y0 + bi * (bh + bg), w = iw * b.v / max;
+      s += `<g class="barg" data-tip="${esc(b.tip)}"><rect class="hit" x="${lw}" y="${y - 1}" width="${iw + vw}" height="${bh + 2}"/><path class="bar" d="${rightRound(lw, y, Math.max(w, b.v > 0 ? 2 : 0), bh, 4)}" fill="${b.color}"/></g>`;
+      s += `<text class="val" x="${lw + Math.max(w, 0) + 6}" y="${y + bh / 2 + 4}" style="font-weight:${b.strong === false ? 400 : 600}">${esc(b.label)}</text>`;
+    });
+  });
+  el.innerHTML = s + "</svg>";
+}
+
+/* ---------- rendering: weekly cash ---------- */
+const $ = id => document.getElementById(id);
+function srcPills() {
+  const html = S.source.kind === "demo" ? `<span class="pill demo">Demo data</span>` : `<span class="pill file" title="${esc(S.source.name)}">Your data</span>`;
+  document.querySelectorAll(".src-pill").forEach(e => e.innerHTML = html);
+}
+function renderNotice() {
+  const n = $("notice");
+  if (S.source.kind === "demo") {
+    n.innerHTML = `<span class="pill demo">Demo data</span><span>${S.invoices.length} fictional invoices across 20 customers (Contractor A to T) and three VARs. Load a Stripe invoice export (Invoices → Export, all columns) to see your own numbers. Nothing leaves your browser.</span><a class="arrow" id="noticeLoad">Load your CSV</a>`;
+    $("noticeLoad").onclick = () => $("fileIn").click();
+  } else {
+    const p = S.parse, live = S.invoices.length - p.counts.excluded;
+    const parts = [`Loaded <b>${p.counts.rows}</b> rows from <b>${esc(S.source.name)}</b>`, `${live} counted`, `${p.counts.excluded} void, draft or uncollectible excluded`];
+    if (p.counts.inferredStream === -1) parts.push("stream inferred from description (add a <code>stream</code> metadata column to set it)");
+    n.innerHTML = `<span class="pill file">Your data</span><span>${parts.join(" · ")}. Parsed locally; nothing was uploaded.</span>` + p.warn.map(w => `<span class="warn">⚠ ${esc(w)}</span>`).join("");
+  }
+}
+function renderCash() {
+  const asOf = S.asOf, m = compute(asOf);
+  const cur = m.weeks[m.weeks.length - 1];
+  $("heroEyebrow").textContent = `As of ${fmtDate(asOf)}`;
+  $("headline").innerHTML = `Week of ${fmtShort(m.mon)}: <span class="g">${money(cur.v)}</span> collected <span class="sep">·</span> ${money(m.outstanding)} outstanding <span class="sep">·</span> ${m.chase.length} invoice${m.chase.length === 1 ? "" : "s"} to chase`;
+  const rate = m.billedWin > 0 ? m.collectedWin / m.billedWin : 0;
+  const prior = m.weeks.slice(0, 7).reduce((a, w) => a + w.v, 0) / 7;
+  const chaseV = m.chase.reduce((s, i) => s + i.out, 0);
+  $("kpis").innerHTML = [
+    ["Overdue", money(m.overdue), `${m.outstanding > 0 ? pct(m.overdue / m.outstanding) : "0%"} of outstanding`],
+    ["To chase (7+ days)", money(chaseV), `${m.chase.length} invoices, ${new Set(m.chase.map(c => c.customer)).size} customers`],
+    ["Avg weekly collections", money(prior), "Prior 7 full weeks"],
+    ["Collected vs billed", pct(rate), "Last 8 weeks, all streams"],
+  ].map(([e, v, d]) => `<div class="kpi"><div class="eyebrow">${e}</div><div class="v num">${v}</div><div class="d">${d}</div></div>`).join("");
+
+  $("weeklySub").textContent = `${money(m.collectedWin)} collected across 8 weeks. This week runs ${fmtShort(m.mon)} to ${fmtShort(asOf)}.`;
+  $("avgLegend").innerHTML = `<i style="height:0;border-top:2px dashed var(--ink);width:14px;vertical-align:3px;opacity:.6"></i>Prior 7-week average ${money(prior)}`;
+  weeklyChart($("weeklyChart"), m.weeks);
+
+  const overdueBk = m.buckets.slice(1);
+  $("agingTotal").innerHTML = `<span class="eyebrow">Overdue</span><span class="v num">${money(m.overdue)}</span>`;
+  hbarChart($("agingChart"), m.buckets.map(b => ({
+    label: b.k, sub: `${b.n} invoice${b.n === 1 ? "" : "s"}`,
+    bars: [{ v: b.v, color: b.color, label: money(b.v), strong: b.k !== "Not yet due", tip: `<div class='t'>${b.k}</div>${money(b.v)} across ${b.n} invoice${b.n === 1 ? "" : "s"}` }],
+  })), { aria: "Outstanding receivables by aging bucket", barH: 20, rowGap: 14, max: Math.max(1, ...m.buckets.map(b => b.v)) });
+
+  $("streamSub").textContent = `${fmtShort(m.winStart)} to ${fmtShort(asOf)}. Billed is invoices issued in the window; collected is cash received in the window, whenever it was invoiced.`;
+  const keys = m.streamKeys.filter(k => STREAMS.includes(k) || m.streams[k].billed || m.streams[k].collected);
+  hbarChart($("streamChart"), keys.map(k => {
+    const s = m.streams[k], r = s.billed ? s.collected / s.billed : 0;
+    return { label: k, sub: s.billed ? `${pct(r)} collected` : "", bars: [
+      { v: s.billed, color: "var(--s-billed)", label: money(s.billed), tip: `<div class='t'>${esc(k)} · billed</div>${money(s.billed)} invoiced` },
+      { v: s.collected, color: "var(--s-collected)", label: money(s.collected), tip: `<div class='t'>${esc(k)} · collected</div>${money(s.collected)} received` },
+    ] };
+  }), { aria: "Billed versus collected by revenue stream", barH: 16, rowGap: 18 });
+
+  // chase list
+  const cl = $("chaseList");
+  if (!m.chase.length) cl.innerHTML = `<div class="empty">Nothing 7+ days overdue as of ${fmtDate(asOf)}.</div>`;
+  else {
+    let h = `<table><thead><tr><th>Customer</th><th>Invoice</th><th>Due</th><th class="r">Days late</th><th class="r">Outstanding</th><th>Tier</th><th class="r"></th></tr></thead><tbody>`;
+    m.chase.forEach((i, idx) => {
+      const partial = i.amountPaid > 0 && i.status !== "paid" ? `<span class="s">part-paid: ${money(i.amountPaid)} of ${money(i.amountDue)}</span>` : "";
+      h += `<tr class="item"><td class="c-cust"><b>${esc(i.customer)}</b><span class="s">${esc(i.stream)}${i.partner ? " · " + esc(i.partner) : ""}</span></td>
+        <td class="c-inv">${esc(i.number)}</td><td class="c-due">${fmtShort(i.dueEff)}</td>
+        <td class="r num c-days">${i.dOver}<span class="s" style="display:inline"> days</span></td>
+        <td class="r num c-amt"><b>${money2(i.out)}</b>${partial}</td>
+        <td class="c-tier"><span class="tier ${i.tier}">${i.tier}</span></td>
+        <td class="r c-act"><button class="btn btn-line btn-sm" data-draft="${idx}" aria-expanded="false">Draft</button></td></tr>
+        <tr class="draft hidden" id="draft-${idx}"><td colspan="7"><div class="draftbox"><pre>${esc(draftFor(i, asOf, m.byCust))}</pre><div class="row"><button class="btn btn-green btn-sm" data-copy="${idx}">Copy follow-up</button><span class="muted" style="font-size:12px">Fill in the bracketed bits before sending.</span></div></div></td></tr>`;
+    });
+    h += `</tbody></table>`;
+    if (m.grace.length) h += `<div class="grace">Also overdue but in grace (1 to 6 days, no follow-up yet): ${m.grace.map(g => `${esc(g.customer)} ${money(g.out)} (${g.dOver}d)`).join(", ")}.</div>`;
+    cl.innerHTML = h;
+    cl.querySelectorAll("[data-draft]").forEach(b => b.onclick = () => {
+      const r = $("draft-" + b.dataset.draft), open = r.classList.toggle("hidden");
+      b.setAttribute("aria-expanded", String(!open)); b.textContent = open ? "Draft" : "Hide";
+    });
+    cl.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => copyText($("draft-" + b.dataset.copy).querySelector("pre").textContent, b));
+  }
+}
+function copyText(t, btn) {
+  const done = () => { const o = btn.textContent; btn.textContent = "Copied ✓"; setTimeout(() => btn.textContent = o, 1400); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(done, () => fallback());
+  else fallback();
+  function fallback() { const ta = document.createElement("textarea"); ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); done(); } catch (e) { } ta.remove(); }
+}
+
+/* ---------- VAR payouts ---------- */
+const ATTR_ALIASES = {
+  partner: ["partner", "var", "reseller", "partnername", "partnermetadata", "metadatapartner"],
+  customer: ["customer", "customername", "account", "client"],
+  invoice: ["invoice", "invoicenumber", "number", "invoiceid", "reference"],
+  date: ["date", "paidat", "paiddate", "collectedon", "paymentdate", "period"],
+  amount: ["amount", "revenue", "collected", "attributedrevenue", "amountpaid", "netrevenue"],
+};
+function attrFromInvoices() {
+  const rows = S.invoices.filter(i => i.partner && i.paidAt != null && i.amountPaid > 0 && i.status !== "void")
+    .sort((a, b) => a.paidAt - b.paidAt)
+    .map(i => [i.partner, i.customer, i.number, iso(i.paidAt), i.amountPaid.toFixed(2)]);
+  return toCSV([["partner", "customer", "invoice", "date", "amount"], ...rows]);
+}
+function parseAttr(text) {
+  const rows = parseCSV(text);
+  if (!rows.length) return { rows: [], warn: "No rows yet. Paste CSV with partner, customer, invoice, date, amount." };
+  const c = mapCols(rows[0], ATTR_ALIASES);
+  if (c.partner == null || c.amount == null) return { rows: [], warn: "Need at least a partner column and an amount column in the header row." };
+  let skipped = 0;
+  const out = rows.slice(1).map(r => {
+    const amount = num(r[c.amount]), raw = c.date != null ? String(r[c.date] || "").trim() : "";
+    let day = parseDay(raw), ym = day != null ? ymOf(day) : (/^\d{4}-\d{2}$/.test(raw) ? raw : null);
+    if (!String(r[c.partner] || "").trim() || isNaN(amount) || !ym) { skipped++; return null; }
+    return { partner: String(r[c.partner]).trim(), customer: c.customer != null ? String(r[c.customer] || "").trim() : "", invoice: c.invoice != null ? String(r[c.invoice] || "").trim() : "", day, ym, amount };
+  }).filter(Boolean);
+  return { rows: out, warn: (skipped ? `${skipped} row${skipped > 1 ? "s" : ""} skipped (missing partner, amount or date). ` : "") + `${out.length} attributed line${out.length === 1 ? "" : "s"} read.` };
+}
+function calcPayout(lines, rule) {
+  const R = round2(lines.reduce((s, l) => s + l.amount, 0));
+  const rate = (+rule.rate || 0) / 100, hasTier = rule.thr !== "" && rule.thr != null && !isNaN(+rule.thr);
+  const thr = hasTier ? +rule.thr : Infinity, rate2 = hasTier ? ((rule.rate2 === "" || rule.rate2 == null ? rule.rate : +rule.rate2) / 100) : rate;
+  const base = Math.max(0, Math.min(R, thr)), above = Math.max(0, R - thr);
+  const t1 = round2(base * rate), t2 = round2(above * rate2), gross = round2(t1 + t2);
+  const hasCap = rule.cap !== "" && rule.cap != null && !isNaN(+rule.cap);
+  const payout = hasCap ? Math.min(gross, +rule.cap) : gross;
+  return { R, rate, rate2, thr, hasTier, base, above, t1, t2, gross, hasCap, cap: hasCap ? +rule.cap : null, capCut: round2(gross - payout), payout: round2(payout) };
+}
+function ruleFor(p) { return (S.rules[p] ||= { rate: 15, thr: "", rate2: "", cap: "" }); }
+function partners() { return [...new Set([...Object.keys(S.rules).filter(p => S.attr.some(a => a.partner === p) || DEFAULT_RULES[p]), ...S.attr.map(a => a.partner)])].sort(); }
+
+function renderRules() {
+  const ps = partners();
+  let h = `<thead><tr><th>Partner</th><th class="r">Base rate</th><th class="r">Tier threshold</th><th class="r">Rate above</th><th class="r">Cap / period</th></tr></thead><tbody>`;
+  ps.forEach(p => {
+    const r = ruleFor(p);
+    h += `<tr><td><b>${esc(p)}</b></td>
+      <td><label class="inwrap suf"><input inputmode="decimal" data-p="${esc(p)}" data-k="rate" value="${esc(r.rate)}" aria-label="${esc(p)} base rate"><span>%</span></label></td>
+      <td><label class="inwrap pre"><input inputmode="decimal" data-p="${esc(p)}" data-k="thr" value="${esc(r.thr)}" placeholder="none" aria-label="${esc(p)} tier threshold"><span>$</span></label></td>
+      <td><label class="inwrap suf"><input inputmode="decimal" data-p="${esc(p)}" data-k="rate2" value="${esc(r.rate2)}" placeholder="same" aria-label="${esc(p)} rate above threshold"><span>%</span></label></td>
+      <td><label class="inwrap pre"><input inputmode="decimal" data-p="${esc(p)}" data-k="cap" value="${esc(r.cap)}" placeholder="none" aria-label="${esc(p)} cap per period"><span>$</span></label></td></tr>`;
+  });
+  $("rulesTable").innerHTML = h + "</tbody>";
+  $("rulesTable").querySelectorAll("input").forEach(inp => inp.oninput = () => {
+    const v = inp.value.replace(/[^0-9.]/g, ""); S.rules[inp.dataset.p][inp.dataset.k] = v === "" ? "" : +v; renderStatements();
+  });
+}
+function renderPeriods() {
+  const months = [...new Set(S.attr.map(a => a.ym))].sort().reverse();
+  const sel = $("period");
+  const lastFull = ymOf(toDay(fromDay(S.asOf).getUTCFullYear(), fromDay(S.asOf).getUTCMonth() + 1, 1) - 1);
+  if (!months.includes(S.period)) S.period = months.includes(lastFull) ? lastFull : months[0] || null;
+  sel.innerHTML = months.map(m => `<option value="${m}" ${m === S.period ? "selected" : ""}>${fmtMonth(m)}${m === ymOf(S.asOf) ? " (to date)" : ""}</option>`).join("") || `<option>No data</option>`;
+}
+function statementData() {
+  return partners().map(p => {
+    const lines = S.attr.filter(a => a.partner === p && a.ym === S.period).sort((a, b) => (a.day ?? 0) - (b.day ?? 0));
+    return { p, lines, c: calcPayout(lines, ruleFor(p)) };
+  });
+}
+function renderStatements() {
+  const wrap = $("statements");
+  if (!S.period) { wrap.innerHTML = `<div class="card"><div class="card-b"><div class="empty">No attributed revenue to calculate yet.</div></div></div>`; $("stmtTitle").textContent = "Statements"; return; }
+  const data = statementData(), total = data.reduce((s, d) => s + d.c.payout, 0);
+  $("stmtTitle").textContent = `${fmtMonth(S.period)}: ${money2(total)} owed across ${data.filter(d => d.c.payout > 0).length} partner${data.length === 1 ? "" : "s"}`;
+  const pill = S.source.kind === "demo" ? `<span class="pill demo">Demo data</span>` : `<span class="pill file">Your data</span>`;
+  wrap.innerHTML = data.map(({ p, lines, c }) => {
+    const rateTxt = c.hasTier ? `${pct(c.rate)} to ${money(c.thr)}, ${pct(c.rate2)} above` : `${pct(c.rate)} flat`;
+    let calc = `<tr><td>Attributed revenue collected <span class="s">${lines.length} line${lines.length === 1 ? "" : "s"}</span></td><td class="r num">${money2(c.R)}</td></tr>`;
+    calc += `<tr><td>${c.hasTier ? "Tier 1: " : ""}${pct(c.rate)} × ${money2(c.base)}${c.hasTier ? ` <span class="s">up to ${money(c.thr)}</span>` : ""}</td><td class="r num">${money2(c.t1)}</td></tr>`;
+    if (c.hasTier) calc += `<tr><td>Tier 2: ${pct(c.rate2)} × ${money2(c.above)} <span class="s">${c.above > 0 ? "above " + money(c.thr) : "threshold not reached"}</span></td><td class="r num">${money2(c.t2)}</td></tr>`;
+    calc += `<tr><td>Gross share</td><td class="r num">${money2(c.gross)}</td></tr>`;
+    if (c.hasCap) calc += c.capCut > 0 ? `<tr class="cap"><td>Cap applied <span class="s">capped at ${money2(c.cap)}</span></td><td class="r num">${money2(-c.capCut)}</td></tr>` : `<tr><td class="muted">Cap ${money2(c.cap)} <span class="s">not reached</span></td><td class="r num muted">${money2(0)}</td></tr>`;
+    calc += `<tr class="total"><td>Payout due</td><td class="r num">${money2(c.payout)}</td></tr>`;
+    const lineRows = lines.length ? lines.map(l => `<tr><td class="num">${l.day != null ? fmtShort(l.day) : esc(l.ym)}</td><td>${esc(l.customer)}<span class="s">${esc(l.invoice)}</span></td><td class="r num">${money2(l.amount)}</td></tr>`).join("") : `<tr><td colspan="3" class="muted">No attributed revenue this period.</td></tr>`;
+    return `<div class="card"><div class="stmt-head"><div><div class="eyebrow">Payout statement · ${fmtMonth(S.period)}</div><h3>${esc(p)}</h3><div class="muted" style="font-size:12px;margin-top:2px">${rateTxt}${c.hasCap ? `, cap ${money(c.cap)}` : ""}</div></div><div class="stmt-pay"><div class="v num">${money2(c.payout)}</div>${pill}</div></div>
+      <div class="card-b"><table><thead><tr><th>Collected</th><th>Customer · invoice</th><th class="r">Amount</th></tr></thead><tbody>${lineRows}</tbody></table>
+      <table class="calc" style="margin-top:14px"><tbody>${calc}</tbody></table>
+      <div class="toolbar"><button class="btn btn-line btn-sm" data-exp="${esc(p)}">Export ${esc(p)} CSV</button></div></div></div>`;
+  }).join("");
+  wrap.querySelectorAll("[data-exp]").forEach(b => b.onclick = () => exportCSV([b.dataset.exp]));
+}
+function exportCSV(only) {
+  const rows = [["partner", "period", "line", "date", "customer", "invoice", "basis", "rate", "amount"]];
+  statementData().filter(d => !only || only.includes(d.p)).forEach(({ p, lines, c }) => {
+    lines.forEach(l => rows.push([p, S.period, "attributed revenue", l.day != null ? iso(l.day) : l.ym, l.customer, l.invoice, "", "", l.amount.toFixed(2)]));
+    rows.push([p, S.period, "subtotal", "", "", "", "", "", c.R.toFixed(2)]);
+    rows.push([p, S.period, c.hasTier ? "tier 1" : "share", "", "", "", c.base.toFixed(2), (c.rate * 100).toFixed(2) + "%", c.t1.toFixed(2)]);
+    if (c.hasTier) rows.push([p, S.period, "tier 2", "", "", "", c.above.toFixed(2), (c.rate2 * 100).toFixed(2) + "%", c.t2.toFixed(2)]);
+    rows.push([p, S.period, "gross share", "", "", "", "", "", c.gross.toFixed(2)]);
+    if (c.hasCap) rows.push([p, S.period, "cap adjustment", "", "", "", c.cap.toFixed(2), "", (-c.capCut).toFixed(2)]);
+    rows.push([p, S.period, "payout due", "", "", "", "", "", c.payout.toFixed(2)]);
+  });
+  const name = only && only.length === 1 ? `payout-${only[0].toLowerCase().replace(/\s+/g, "-")}-${S.period}.csv` : `var-payouts-${S.period}.csv`;
+  download(name, toCSV(rows));
+}
+function download(name, text) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/csv" })); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function setAttrText(t) { $("attrText").value = t; applyAttr(); }
+function applyAttr() {
+  const r = parseAttr($("attrText").value); S.attr = r.rows; $("attrNote").textContent = r.warn;
+  renderRules(); renderPeriods(); renderStatements();
+}
+function renderVAR() { applyAttr(); }
+
+/* ---------- loading ---------- */
+function loadInvoices(text, source) {
+  const p = parseInvoices(text);
+  S.invoices = p.invoices; S.parse = p; S.source = source;
+  if (source.kind === "file") {
+    const maxDay = Math.max(...p.invoices.map(i => Math.max(i.created, i.paidAt ?? 0)));
+    if (todayDay() - maxDay > 30) S.asOf = maxDay;
+    $("asof").value = iso(S.asOf);
+  }
+  $("resetBtn").classList.toggle("hidden", source.kind === "demo");
+  srcPills(); renderNotice(); renderCash();
+  const attrTxt = attrFromInvoices();
+  if (source.kind === "demo" || p.hasPartner) setAttrText(attrTxt);
+  else { setAttrText("partner,customer,invoice,date,amount\n"); $("attrNote").textContent = "Your export has no partner column, so attributed revenue can't be built from it. Paste or upload it here instead."; }
+}
+function readFile(f, cb) { const r = new FileReader(); r.onload = () => cb(String(r.result)); r.readAsText(f); }
+function loadFile(f) {
+  readFile(f, t => { try { loadInvoices(t, { kind: "file", name: f.name }); } catch (e) { alert("Couldn't read that file: " + e.message); } });
+}
+function loadDemo() { S.asOf = todayDay(); $("asof").value = iso(S.asOf); DEMO_TEXT = demoCSV(S.asOf); S.rules = structuredClone(DEFAULT_RULES); loadInvoices(DEMO_TEXT, { kind: "demo", name: "" }); }
+
+/* ---------- wiring ---------- */
+$("uploadBtn").onclick = () => $("fileIn").click();
+$("fileIn").onchange = e => { if (e.target.files[0]) loadFile(e.target.files[0]); e.target.value = ""; };
+$("resetBtn").onclick = loadDemo;
+$("asof").onchange = e => { const d = parseDay(e.target.value); if (d != null) { S.asOf = d; renderCash(); renderPeriods(); renderStatements(); } };
+$("demoDl").onclick = () => download("demo-stripe-invoices.csv", DEMO_TEXT || demoCSV(S.asOf));
+$("attrUpload").onclick = () => $("attrFile").click();
+$("attrFile").onchange = e => { const f = e.target.files[0]; if (f) readFile(f, setAttrText); e.target.value = ""; };
+$("attrRebuild").onclick = () => setAttrText(attrFromInvoices());
+let attrT; $("attrText").oninput = () => { clearTimeout(attrT); attrT = setTimeout(applyAttr, 250); };
+$("period").onchange = e => { S.period = e.target.value; renderStatements(); };
+$("exportAll").onclick = () => exportCSV(null);
+function selectTab(which) {
+  ["cash", "var"].forEach(k => { $("tab-" + k).setAttribute("aria-selected", String(k === which)); $("panel-" + k).classList.toggle("hidden", k !== which); });
+  if (which === "cash") renderCash();
+  try { history.replaceState(null, "", which === "var" ? "#var" : "#"); } catch (e) { }
+}
+$("tab-cash").onclick = () => selectTab("cash");
+$("tab-var").onclick = () => selectTab("var");
+let dragN = 0;
+addEventListener("dragenter", e => { if ([...(e.dataTransfer?.types || [])].includes("Files")) { dragN++; document.body.classList.add("dropping"); } });
+addEventListener("dragleave", () => { if (--dragN <= 0) { dragN = 0; document.body.classList.remove("dropping"); } });
+addEventListener("dragover", e => e.preventDefault());
+addEventListener("drop", e => { e.preventDefault(); dragN = 0; document.body.classList.remove("dropping"); const f = e.dataTransfer.files[0]; if (f) loadFile(f); });
+let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (!$("panel-cash").classList.contains("hidden")) renderCash(); }, 150); });
+const tip = $("tip");
+document.addEventListener("pointermove", e => {
+  const t = e.target.closest?.("[data-tip]");
+  if (!t) { tip.style.opacity = 0; return; }
+  tip.innerHTML = t.dataset.tip; tip.style.opacity = 1;
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 14, y = e.clientY - r.height - 10;
+  if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 14;
+  if (y < 8) y = e.clientY + 16;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+});
+document.addEventListener("pointerleave", () => tip.style.opacity = 0);
+
+loadDemo();
+if (location.hash === "#var") selectTab("var");
+</script>
+</body>
+</html>
