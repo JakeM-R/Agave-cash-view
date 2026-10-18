@@ -74,8 +74,6 @@ main{padding:20px 0 40px}
 .card-h h2{font-size:17px;font-weight:600;margin-top:4px}
 .card-b{padding:14px 18px 18px}
 .card .sub{font-size:13px;color:var(--body);margin:4px 0 0}
-.jd{font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding:10px 18px;margin:0}
-.jd b{font-family:var(--mono);font-weight:500;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:6px}
 
 /* Hero */
 .hero{background:var(--navy-900);border-color:var(--navy-900);color:#C9D0DD;overflow:hidden}
@@ -92,8 +90,6 @@ main{padding:20px 0 40px}
 .kpi .eyebrow{color:#8E9AB0;font-size:10px}
 .kpi .v{font-family:var(--head);color:#fff;font-size:20px;font-weight:600;margin-top:2px}
 .kpi .d{font-size:12px;color:#8E9AB0}
-.hero .jd{border-top-color:rgba(255,255,255,.12);color:#8E9AB0;position:relative;z-index:1}
-.hero .jd b{color:#8E9AB0}
 
 /* Charts */
 .chart{width:100%;position:relative}
@@ -269,7 +265,6 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
         <h2 id="headline"></h2>
         <div class="kpis" id="kpis"></div>
       </div>
-      <p class="jd"><b>From the JD</b>"Be the backbone of how money moves through the company, from invoice to cash to reporting."</p>
     </div>
 
     <div class="card span-7">
@@ -278,7 +273,6 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
         <pre id="weeklyNote" class="note"></pre>
         <div class="toolbar"><button class="btn btn-green" id="copyNote" type="button">Copy update</button><span class="muted" style="font-size:12px">Plain text, so it pastes cleanly anywhere.</span></div>
       </div>
-      <p class="jd"><b>From the JD</b>"Stand up billing and payment reporting that gives leadership a clean weekly view of cash."</p>
     </div>
 
     <div class="card span-5">
@@ -292,13 +286,11 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
         <div class="legend"><span><i style="background:var(--s-billed)"></i>Billed</span><span><i style="background:var(--s-collected)"></i>Collected</span></div>
         <div class="chart" id="streamChart"></div>
       </div>
-      <p class="jd"><b>From the JD</b>"Track, reconcile, and report on revenue across all streams (subscriptions, add-ons, partners, and more)."</p>
     </div>
 
     <div class="card chase">
       <div class="card-h"><div><div class="eyebrow">Chase list · billing inbox</div><h2>Who to chase, in order</h2><p class="sub">Stripe's automatic reminders handle the first touch. These are the human follow-ups from the billing inbox once those have been ignored, sorted by amount × days overdue: nudge at 7+ days, firm at 30+, escalate at 60+.</p></div><span class="src-pill"></span></div>
       <div class="card-b"><div id="agingStrip"></div><div id="chaseList"></div></div>
-      <p class="jd"><b>From the JD</b>"Track customer payments: what's been billed, what's been collected, and what's outstanding, and follow up on anything late." · "Own billing email."</p>
     </div>
 
     <div class="card">
@@ -329,13 +321,11 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
           <span class="src-pill"></span>
         </div>
       </div>
-      <p class="jd"><b>From the JD</b>"Make sure partner revenue is tracked, paid, and never a black box."</p>
     </div>
 
     <div class="card span-7">
       <div class="card-h"><div><div class="eyebrow">Money in</div><h2>Partner remittances</h2><p class="sub">Expected is what's due under the agreement; received is what landed in the bank. Earlier periods still short are carried here until they're settled.</p></div><span class="src-pill"></span></div>
       <div class="card-b rules-wrap"><table id="remitTable" class="stack"></table></div>
-      <p class="jd"><b>From the JD</b>"Track revenue received from vendors and partners."</p>
     </div>
     <div class="card span-5">
       <div class="card-h"><div><div class="eyebrow">Remittance data</div><h2>Expected vs received</h2><p class="sub">Paste or upload CSV with partner, period, expected, received, received_date, reference.</p></div><span class="src-pill"></span></div>
@@ -372,7 +362,6 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
         <div><div class="eyebrow">Money out · payout statements</div><h2 id="stmtTitle">Statements</h2><p class="sub">Refunds are netted in the period they happen, so revenue already paid out is clawed back from the next statement. A negative balance carries forward.</p></div>
         <div class="toolbar" style="margin:0"><button class="btn btn-green" id="exportAll" type="button" style="height:32px">Export payouts CSV</button></div>
       </div>
-      <p class="jd"><b>From the JD</b>"Manage rev-share calculations and payouts to VARs."</p>
     </div>
     <div class="statements" id="statements" style="grid-column:1/-1"></div>
   </div>
