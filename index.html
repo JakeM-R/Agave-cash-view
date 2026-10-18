@@ -177,6 +177,18 @@ dialog#pv::backdrop{background:rgba(17,26,44,.6)}
 @media print{body.printing > :not(#pv){display:none!important}body.printing dialog#pv{position:static;max-width:none;width:auto;max-height:none;border:0}body.printing .pv-actions{display:none}}
 .terms{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--body)}
 .terms input{width:52px;border:1px solid var(--line-strong);border-radius:0;padding:5px 6px;text-align:right;background:#fff}
+.tog{cursor:pointer;user-select:none}
+.tog > .src-pill{margin-left:auto}
+.tog:focus-visible{outline:2px solid var(--green);outline-offset:-2px}
+.chev{flex:none;width:28px;height:28px;border:1px solid var(--line-strong);background:#fff;display:grid;place-items:center;align-self:center}
+.chev::before{content:"";width:7px;height:7px;border-right:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink);transform:translateY(-2px) rotate(45deg);transition:transform .15s}
+.tog:hover .chev{border-color:var(--ink)}
+.coll.collapsed .chev::before{transform:translateX(-2px) rotate(-45deg)}
+.coll.collapsed{align-self:start}
+.coll.collapsed > :not(.tog){display:none}
+.coll.collapsed > .card-h{padding-bottom:16px}
+.coll.collapsed > .tog .sub{display:none}
+.statements .stmt-head{align-items:center}
 footer{font-size:12px;color:var(--muted);padding:0 0 32px}
 .dropping::after{content:"Drop the CSV to load it";position:fixed;inset:12px;border:2px dashed var(--green);background:rgba(17,26,44,.82);color:#fff;display:grid;place-items:center;font:600 22px var(--head);z-index:60}
 .hidden{display:none!important}
@@ -278,7 +290,7 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
       <div class="card-b"><div class="legend"><span><i style="background:var(--s-collected)"></i>Full week</span><span><i style="background:repeating-linear-gradient(45deg,var(--s-collected) 0 2px,#E3F4E6 2px 5px);outline:1px solid var(--s-collected)"></i>This week to date</span><span id="avgLegend"></span></div><div class="chart" id="weeklyChart"></div></div>
     </div>
 
-    <div class="card">
+    <div class="card" data-coll="streams" data-open="0">
       <div class="card-h"><div><div class="eyebrow">By revenue stream</div><h2>Billed vs collected</h2><p class="sub" id="streamSub"></p></div><span class="src-pill"></span></div>
       <div class="card-b">
         <div class="legend"><span><i style="background:var(--s-billed)"></i>Billed</span><span><i style="background:var(--s-collected)"></i>Collected</span></div>
@@ -286,7 +298,7 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
       </div>
     </div>
 
-    <div class="card chase">
+    <div class="card chase" data-coll="chase" data-open="1">
       <div class="card-h"><div><div class="eyebrow">Chase list · billing inbox</div><h2>Who to chase, in order</h2><p class="sub">Stripe's automatic reminders handle the first touch. These are the human follow-ups from the billing inbox once those have been ignored, sorted by amount × days overdue: nudge at 7+ days, firm at 30+, escalate at 60+.</p></div><span class="src-pill"></span></div>
       <div class="card-b"><div id="agingStrip"></div><div id="chaseList"></div></div>
     </div>
@@ -307,11 +319,11 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
       </div>
     </div>
 
-    <div class="card span-7">
+    <div class="card">
       <div class="card-h"><div><div class="eyebrow">Money in</div><h2>Partner remittances</h2><p class="sub">Expected is what's due under the agreement; received is what landed in the bank. Earlier periods still short are carried here until they're settled.</p></div><span class="src-pill"></span></div>
       <div class="card-b rules-wrap"><table id="remitTable" class="stack"></table></div>
     </div>
-    <div class="card span-5">
+    <div class="card" data-coll="remitData" data-open="0">
       <div class="card-h"><div><div class="eyebrow">Remittance data</div><h2>Expected vs received</h2><p class="sub">Paste or upload CSV with partner, period, expected, received, received_date, reference.</p></div><span class="src-pill"></span></div>
       <div class="card-b">
         <textarea id="remitText" spellcheck="false" aria-label="Partner remittances CSV"></textarea>
@@ -324,11 +336,11 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
       </div>
     </div>
 
-    <div class="card span-7">
+    <div class="card">
       <div class="card-h"><div><div class="eyebrow">Money out · rules</div><h2>Rev-share rules per VAR</h2><p class="sub">Base rate up to the threshold, tier rate on revenue above it, and an optional cap per period. Leave threshold blank for a flat rate, cap blank for no cap.</p></div><span class="src-pill"></span></div>
       <div class="card-b rules-wrap"><table class="rules" id="rulesTable"></table></div>
     </div>
-    <div class="card span-5">
+    <div class="card" data-coll="attrData" data-open="0">
       <div class="card-h"><div><div class="eyebrow">Attributed revenue</div><h2>Collected revenue by VAR</h2><p class="sub">Paste or upload CSV with partner, customer, invoice, date, amount. Refunds go in as negative amounts.</p></div><span class="src-pill"></span></div>
       <div class="card-b">
         <textarea id="attrText" spellcheck="false" aria-label="Attributed revenue CSV"></textarea>
@@ -567,7 +579,8 @@ const DEFAULT_RULES = {
 };
 
 /* ---------- state ---------- */
-const S = { invoices: [], parse: null, source: { kind: "demo", name: "" }, asOf: todayDay(), rules: structuredClone(DEFAULT_RULES), period: null, attr: [], remit: [], paidOut: {}, remitTerms: 15 };
+const S = { invoices: [], parse: null, source: { kind: "demo", name: "" }, asOf: todayDay(), rules: structuredClone(DEFAULT_RULES), period: null, attr: [], remit: [], paidOut: {}, remitTerms: 15, open: {}, chaseAll: false };
+const CHASE_TOP = 5;
 let DEMO_TEXT = "";
 
 /* ---------- metrics ---------- */
@@ -759,7 +772,7 @@ function renderCash() {
     let h = `<table><thead><tr><th>Customer</th><th>Invoice</th><th>Due</th><th class="r">Days late</th><th class="r">Outstanding</th><th>Tier</th><th class="r"></th></tr></thead><tbody>`;
     m.chase.forEach((i, idx) => {
       const partial = i.amountPaid > 0 && i.status !== "paid" ? `<span class="s">part-paid: ${money(i.amountPaid)} of ${money(i.amountDue)}</span>` : "";
-      h += `<tr class="item"><td class="c-cust"><b>${esc(i.customer)}</b><span class="s">${esc(i.stream)}${i.partner ? " · " + esc(i.partner) : ""}</span></td>
+      h += `<tr class="item${idx >= CHASE_TOP && !S.chaseAll ? " hidden" : ""}"><td class="c-cust"><b>${esc(i.customer)}</b><span class="s">${esc(i.stream)}${i.partner ? " · " + esc(i.partner) : ""}</span></td>
         <td class="c-inv">${esc(i.number)}</td><td class="c-due">${fmtShort(i.dueEff)}</td>
         <td class="r num c-days">${i.dOver}<span class="s" style="display:inline"> days</span></td>
         <td class="r num c-amt"><b>${money2(i.out)}</b>${partial}</td>
@@ -768,8 +781,10 @@ function renderCash() {
         <tr class="draft hidden" id="draft-${idx}"><td colspan="7"><div class="draftbox"><pre>${esc(draftFor(i, asOf, m.byCust))}</pre><div class="row"><button class="btn btn-green btn-sm" data-copy="${idx}">Copy follow-up</button><span class="muted" style="font-size:12px">Fill in the bracketed bits before sending.</span></div></div></td></tr>`;
     });
     h += `</tbody></table>`;
+    if (m.chase.length > CHASE_TOP) h += `<div class="toolbar"><button class="btn btn-line btn-sm" id="chaseMore" type="button">${S.chaseAll ? `Show top ${CHASE_TOP}` : `Show all ${m.chase.length}`}</button></div>`;
     if (m.grace.length) h += `<div class="grace">Also overdue but in grace (1 to 6 days, no follow-up yet): ${m.grace.map(g => `${esc(g.customer)} ${money(g.out)} (${g.dOver}d)`).join(", ")}.</div>`;
     cl.innerHTML = h;
+    if ($("chaseMore")) $("chaseMore").onclick = () => { S.chaseAll = !S.chaseAll; renderCash(); };
     cl.querySelectorAll("[data-draft]").forEach(b => b.onclick = () => {
       const r = $("draft-" + b.dataset.draft), open = r.classList.toggle("hidden");
       b.setAttribute("aria-expanded", String(!open)); b.textContent = open ? "Draft" : "Hide";
@@ -1001,11 +1016,12 @@ function renderStatements() {
   wrap.innerHTML = data.map(({ p, lines, c }) => {
     const rateTxt = c.hasTier ? `${pct(c.rate)} to ${money(c.thr)}, ${pct(c.rate2)} above` : `${pct(c.rate)} flat`;
     const paid = S.paidOut[payKey(p)] != null;
-    return `<div class="card"><div class="stmt-head"><div><div class="eyebrow">Payout statement · ${fmtMonth(S.period)}</div><h3>${esc(p)}</h3><div class="muted" style="font-size:12px;margin-top:2px">${rateTxt}${c.hasCap ? `, cap ${money(c.cap)}` : ""}</div></div><div class="stmt-pay"><div class="v num">${money2(c.payout)}</div><div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">${payChip(p, c)}${pill}</div></div></div>
+    return `<div class="card" data-coll="stmt:${esc(p)}" data-open="0"><div class="stmt-head"><div><div class="eyebrow">Payout statement · ${fmtMonth(S.period)}</div><h3>${esc(p)}</h3><div class="muted" style="font-size:12px;margin-top:2px">${rateTxt}${c.hasCap ? `, cap ${money(c.cap)}` : ""}</div></div><div class="stmt-pay"><div class="v num">${money2(c.payout)}</div><div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">${payChip(p, c)}${pill}</div></div></div>
       <div class="card-b"><table><thead><tr><th>Collected</th><th>Customer · invoice</th><th class="r">Amount</th></tr></thead><tbody>${linesHtml(lines)}</tbody></table>
       <table class="calc" style="margin-top:14px"><tbody>${calcHtml(c, lines)}</tbody></table>
       <div class="toolbar">${c.payout > 0 ? `<button class="btn btn-line btn-sm" data-pay="${esc(p)}">${paid ? "Undo paid" : "Mark as paid"}</button>` : ""}<button class="btn btn-line btn-sm" data-view="${esc(p)}">Partner view</button><button class="btn btn-line btn-sm" data-exp="${esc(p)}">Export CSV</button></div></div></div>`;
   }).join("");
+  initColl(wrap);
   wrap.querySelectorAll("[data-exp]").forEach(b => b.onclick = () => exportCSV([b.dataset.exp]));
   wrap.querySelectorAll("[data-view]").forEach(b => b.onclick = () => openPartnerView(b.dataset.view));
   wrap.querySelectorAll("[data-pay]").forEach(b => b.onclick = () => {
@@ -1117,6 +1133,29 @@ document.addEventListener("pointermove", e => {
 });
 document.addEventListener("pointerleave", () => tip.style.opacity = 0);
 
+function initColl(root = document) {
+  root.querySelectorAll(".card[data-coll]").forEach(card => {
+    if (card.dataset.ready) return;
+    card.dataset.ready = "1";
+    const h = card.firstElementChild, k = card.dataset.coll, open = k in S.open ? S.open[k] : card.dataset.open === "1";
+    h.classList.add("tog"); h.setAttribute("role", "button"); h.tabIndex = 0;
+    h.insertAdjacentHTML("beforeend", '<span class="chev" aria-hidden="true"></span>');
+    card.classList.add("coll"); card.classList.toggle("collapsed", !open); h.setAttribute("aria-expanded", String(open));
+  });
+}
+function toggleColl(h) {
+  const card = h.parentElement, open = !card.classList.toggle("collapsed");
+  S.open[card.dataset.coll] = open; h.setAttribute("aria-expanded", String(open));
+  if (open && card.querySelector(".chart")) renderCash();
+}
+document.addEventListener("click", e => {
+  const h = e.target.closest(".tog");
+  if (h && !e.target.closest("button, a, input, select, textarea, label")) toggleColl(h);
+});
+document.addEventListener("keydown", e => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.classList?.contains("tog")) { e.preventDefault(); toggleColl(e.target); }
+});
+initColl();
 loadDemo();
 if (location.hash === "#partners" || location.hash === "#var") selectTab("var");
 </script>
