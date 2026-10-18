@@ -152,8 +152,6 @@ select.plain{border:1px solid var(--line-strong);border-radius:0;padding:6px 8px
 .statements{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
 .statements .card{grid-column:auto}
 .check{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--navy-900);color:#fff;font-size:10px;margin-right:6px;vertical-align:-3px}
-.method li{margin:4px 0}
-.method{margin:0;padding-left:0;list-style:none;font-size:13px}
 .note{margin:0;white-space:pre-wrap;font:13px/1.6 var(--sans);color:var(--ink);background:#FBFCFB;border:1px solid var(--line);border-left:3px solid var(--green);padding:14px 16px}
 .kpi .d .good{color:var(--lime)}.kpi .d .bad{color:#FFB3B3}
 .strip-wrap{border:1px solid var(--line);background:#FBFCFB;padding:12px 14px;margin-bottom:14px}
@@ -191,7 +189,7 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
 @media (max-width:640px){
   .wrap{padding:0 16px}
   .grid{padding:8px;gap:8px}
-  .card-h{padding:14px 14px 0}.card-b{padding:12px 14px 14px}.jd{padding:10px 14px}
+  .card-h{padding:14px 14px 0}.card-b{padding:12px 14px 14px}
   .hero .card-b{padding:18px 16px}
   .hero::after{width:48px}
   .controls{width:100%}
@@ -293,20 +291,6 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
       <div class="card-b"><div id="agingStrip"></div><div id="chaseList"></div></div>
     </div>
 
-    <div class="card">
-      <div class="card-h"><div><div class="eyebrow">Method</div><h2>How the numbers are worked out</h2></div></div>
-      <div class="card-b">
-        <ul class="method">
-          <li><span class="check">✓</span>Void, draft and uncollectible invoices are excluded from billed, outstanding and the chase list.</li>
-          <li><span class="check">✓</span>Outstanding uses amount remaining, so a part-paid invoice only counts what's still owed.</li>
-          <li><span class="check">✓</span>Everything is computed as of the selected date: invoices created later are ignored, and an invoice paid after that date counts as outstanding on it. Week-on-week changes re-run the same numbers as of seven days earlier.</li>
-          <li><span class="check">✓</span>Collected means amount paid, dated by the paid-at date. Weeks run Monday to Sunday; the current week runs to the as-of date.</li>
-          <li><span class="check">✓</span>Days overdue counts from the due date (or the invoice date for auto-charged invoices with no due date). Invoices 1 to 6 days late are listed as in grace with no follow-up drafted.</li>
-          <li><span class="check">✓</span>Partner remittances count as received only when dated on or before the as-of date, and fall due a set number of days after the period ends (an input on the Partners tab). Refunds on partner-sourced revenue are netted in the period they happen, so revenue already paid out is clawed back from the next statement.</li>
-          <li><span class="check">✓</span>Column names are matched loosely, so "Amount Due", "amount_due" and "Total" all work. Revenue stream comes from a <code>stream</code> metadata column if present, otherwise it's inferred from the description.</li>
-        </ul>
-      </div>
-    </div>
   </div>
 </section>
 
