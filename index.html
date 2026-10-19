@@ -61,6 +61,7 @@ input[type=date].dark{background:transparent;border:1px solid rgba(255,255,255,.
 .pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border:1px solid var(--line-strong);color:var(--ink);background:#fff;white-space:nowrap}
 .pill.demo{background:var(--mint);border-color:#B4DFC1;color:var(--green-ink)}
 .pill.file{background:#E6ECF8;border-color:#BCC9E6;color:#22386A}
+.notice .arrow + .arrow{margin-left:4px}
 .notice .warn{color:var(--amber-ink)}
 a.arrow{text-decoration:underline;text-underline-offset:3px;font-weight:500;white-space:nowrap;cursor:pointer}
 a.arrow::after{content:" \2192"}
@@ -247,7 +248,7 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
       <div class="controls">
         <label class="ctl-label" for="asof">As of</label>
         <input type="date" id="asof" class="dark">
-        <button class="btn btn-green" id="uploadBtn" type="button">Load Stripe CSV</button>
+        <button class="btn btn-green" id="uploadBtn" type="button">Load invoices CSV</button>
         <button class="btn btn-outline hidden" id="resetBtn" type="button">Back to demo</button>
         <input type="file" id="fileIn" accept=".csv,text/csv" class="hidden">
       </div>
@@ -329,6 +330,7 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
         <textarea id="remitText" spellcheck="false" aria-label="Partner remittances CSV"></textarea>
         <div class="toolbar">
           <button class="btn btn-line" id="remitUpload" type="button">Upload CSV</button>
+          <button class="btn btn-line" data-tpl="remittances" type="button">Template</button>
           <label class="terms">Due <input id="remitTerms" inputmode="numeric" value="15" aria-label="Days after period end that a remittance falls due"> days after period end</label>
           <input type="file" id="remitFile" accept=".csv,.tsv,text/csv" class="hidden">
         </div>
@@ -347,6 +349,7 @@ footer{font-size:12px;color:var(--muted);padding:0 0 32px}
         <div class="toolbar">
           <button class="btn btn-line" id="attrUpload" type="button">Upload CSV</button>
           <button class="btn btn-line" id="attrRebuild" type="button">Rebuild from invoices</button>
+          <button class="btn btn-line" data-tpl="attributed" type="button">Template</button>
           <input type="file" id="attrFile" accept=".csv,.tsv,text/csv" class="hidden">
         </div>
         <div class="grace" id="attrNote"></div>
@@ -717,7 +720,7 @@ function srcPills() {
 function renderNotice() {
   const n = $("notice");
   if (S.source.kind === "demo") {
-    n.innerHTML = `<span class="pill demo">Sample data</span><span>Round numbers to show the mechanics, not a guess at anyone's pricing: ${S.invoices.length} fictional monthly invoices across 20 customers (Contractor A to T), three VARs and two paying partners. Load a Stripe invoice export (Invoices → Export, all columns) to see your own numbers. Nothing leaves your browser.</span><a class="arrow" id="noticeLoad">Load your CSV</a>`;
+    n.innerHTML = `<span class="pill demo">Sample data</span><span>Round numbers to show the mechanics, not a guess at anyone's pricing: ${S.invoices.length} fictional monthly invoices across 20 customers (Contractor A to T), three VARs and two paying partners. Load a CSV of invoices to see your own numbers: fill in the template, or use a Stripe invoice export as it is. Nothing leaves your browser.</span><a class="arrow" id="noticeLoad">Load your CSV</a><a class="arrow" data-tpl="invoices">Invoice CSV template</a>`;
     $("noticeLoad").onclick = () => $("fileIn").click();
   } else {
     const p = S.parse, live = S.invoices.length - p.counts.excluded;
@@ -1154,6 +1157,29 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("keydown", e => {
   if ((e.key === "Enter" || e.key === " ") && e.target.classList?.contains("tog")) { e.preventDefault(); toggleColl(e.target); }
+});
+const TEMPLATES = {
+  invoices: [
+    ["invoice_number", "customer", "customer_email", "description", "amount_due", "amount_paid", "amount_remaining", "status", "invoice_date", "due_date", "paid_date", "stream", "partner"],
+    ["INV-0001", "Customer A", "billing@customer-a.example", "Subscription", "1000.00", "1000.00", "0.00", "paid", "2026-09-01", "2026-09-15", "2026-09-12", "subscriptions", ""],
+    ["INV-0002", "Customer B", "billing@customer-b.example", "Add-on", "250.00", "0.00", "250.00", "open", "2026-09-20", "2026-10-04", "", "add-ons", ""],
+    ["INV-0003", "Customer C", "", "Subscription", "2000.00", "500.00", "1500.00", "open", "2026-10-01", "2026-10-15", "", "partners", "Partner A"],
+    ["INV-0004", "Customer D", "", "Subscription", "1000.00", "0.00", "0.00", "void", "2026-09-05", "2026-09-19", "", "subscriptions", ""],
+  ],
+  remittances: [
+    ["partner", "period", "expected", "received", "received_date", "reference"],
+    ["Partner D", "2026-09", "3000.00", "3000.00", "2026-10-09", "ACH 1234"],
+    ["Partner E", "2026-09", "1500.00", "0.00", "", ""],
+  ],
+  attributed: [
+    ["partner", "customer", "invoice", "date", "amount"],
+    ["Partner A", "Customer C", "INV-0003", "2026-10-03", "500.00"],
+    ["Partner A", "Customer E", "CN-0001 (refund)", "2026-10-05", "-250.00"],
+  ],
+};
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-tpl]");
+  if (t) download(`${t.dataset.tpl}-template.csv`, toCSV(TEMPLATES[t.dataset.tpl]));
 });
 initColl();
 loadDemo();

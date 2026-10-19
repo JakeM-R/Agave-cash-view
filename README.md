@@ -4,7 +4,12 @@ A single static page covering the money side of an ops seat: a weekly cash updat
 
 Everything runs in the browser. Files you load are parsed locally and never uploaded. There's no backend and nothing is stored.
 
-It opens on fictional sample data in round numbers (Contractor A to T, VARs Partner A to C, paying partners D and E), labelled on every panel. The figures show the mechanics; they are not a guess at anyone's pricing. Load your own Stripe invoice export with **Load Stripe CSV**, or drag the file onto the page. **Download the demo CSV** in the footer shows the expected shape.
+It opens on fictional sample data in round numbers (Contractor A to T, VARs Partner A to C, paying partners D and E), labelled on every panel. The figures show the mechanics; they are not a guess at anyone's pricing. Load a CSV of your own invoices with **Load invoices CSV**, or drag the file onto the page. A Stripe invoice export works as it is; otherwise use **Invoice CSV template** in the banner. Each partner input has its own **Template** button too.
+
+## CSV columns
+- **Invoices:** `invoice_number, customer, customer_email, description, amount_due, amount_paid, amount_remaining, status, invoice_date, due_date, paid_date, stream, partner`. Only `amount_due` and a date (`invoice_date` or `due_date`) are required. `status` is paid, open, void, uncollectible or draft. `stream` is subscriptions, add-ons or partners. `partner` names the VAR that sourced the deal, if any. Column names are matched loosely, so Stripe's own headers work too.
+- **Partner remittances:** `partner, period, expected, received, received_date, reference`, with `period` as YYYY-MM.
+- **VAR attributed revenue:** `partner, customer, invoice, date, amount`. Refunds go in as negative amounts.
 
 ## Weekly cash
 - Headline: collected this week, total outstanding, invoices to chase, with week-on-week changes.
